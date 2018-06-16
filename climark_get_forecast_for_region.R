@@ -1,119 +1,126 @@
-
-# get a forecast for a region - 1 to 7 day aggregate
-# read in the region then using the lat, long - pull the forecast 
-
+# load required packages 
 library(aWhereAPI)
 library(dplyr)
 #library(tmap)
 #library(sf)
 
-
+# get a forecast for a region - 1 to 7 day aggregate
+# read in the region then using the lat, long - pull the forecast 
 
 #authenticate yourself to aWhere API & set working directory
-#setwd("c:/Data/CLIMARK/Project2018/")  #set this as this makes all run if all files are here
-load_credentials("c:/2018 work/awhere/Projects/R Working Directory/JC_credentials.txt")
+#setwd("c:/Data/CLIMARK/Project2018/")  
+setwd("~/Documents/aWhere/") #VS
 
-#source("C:/Users/johncorbett/Documents/R Working Directory/Analysis/function_pullAPIData.R")
+load_credentials("c:/2018 work/awhere/Projects/R Working Directory/JC_credentials.txt") #JC
+load_credentials("~/Documents/aWhere/awhere_credentials_VS.txt") #VS
+
+# define the starting and ending year to calculate the LTN
+# in the generateaWhereDataset function
+year.start <- 2010  
+year.end <- 2017
+
+# Read the template for which a forecast will be mapped
+template.file <- "CLIMARKonlyWardTemplate.csv"
+template.place <- read.csv(template.file) %>% 
+  select( c(locationid, 
+             latitude,
+             longitude,
+             shapewkt))
+
+# Define the output filename for the forecast
+filename.out <- "AOI_Forecast"
+
+# specify the start day
+day.start <- as.character(Sys.Date()-1)   # yesterday
+#day.start <- as.character((Sys.Date()))  # today - for forecast
+#day.start <- "2018-06-05" #              specific date 
+
+# specify the end day
+#day.end <- as.character(Sys.Date()-1) # yesterday
+day.end <- as.character(Sys.Date()+7) # 7 days from now
+#day.end <- "2018-06-10" # fixed end date
 
 
-
-
-year_start <- 2010  #this to calc the LTN in the generateaWhereDataset function
-year_end <- 2017
-
-
-#the template for which a forecast will be mapped...
-#TemplatefromCSV <- read.csv("c:/Data/CLIMARK/Project2018/Wardclip_next7_June04.csv") 
-TemplatefromCSV <- read.csv("Wardclip_next7_June04.csv") 
-TemplateCore <- select(TemplatefromCSV, locationid, latitude, longitude, shapewkt)
-
-outputfilename <- "AOI_Forecast"
-
-day_start <- as.character(Sys.Date()-1)   #start is yesterday
-#day_start <- as.character((Sys.Date()))   #start is today - for forecast
-#day_start <- "2018-06-05"
-   #If you want day_end to be yesterday
-   #day_end <- as.character(Sys.Date()-1)
-   #If you want day_end to be 7 days from now
-    day_end <- as.character(Sys.Date()+7)
-    
-   #if you want a fixed end date
-   #day_end <- "2018-06-10"
-
-    #This works!  grabs a nice forecast df
-#fcst2 pulls only the forecast 
-     #it seems odd, but forecasts_latlng can only pull forecast but weirdly generateaWheredataset
-     #appears to require you grab at least 1 day observed...
-#    foredat <- as.character((Sys.Date()))
-#  fcst2 <- forecasts_latlng(lat, lon, day_start = foredat, day_end = day_end, block_size = 24)
-    #agronomic_values_latlng() 
-#ag2 <- agronomic_values_latlng(24.74628, 68.4232, day_start = "2016-03-15", day_end = "2016-04-01")
-#obs2 <- daily_observed_latlng(latpt, longpt, day_start = day_start, day_end = day_end)
+# This works! Grabs a nice forecast df
+# forecast2 pulls only the forecast 
+# it seems odd, but forecasts_latlng can only pull forecast but weirdly generateaWheredataset
+# appears to require you grab at least 1 day observed...
+# foredat <- as.character((Sys.Date()))
+# forecast2 <- forecasts_latlng(lat, lon, day_start = foredat, day_end = day_end, block_size = 24)
+# agronomic_values_latlng() 
+# ag2 <- agronomic_values_latlng(24.74628, 68.4232, day_start = "2016-03-15", day_end = "2016-04-01")
+# obs2 <- daily_observed_latlng(latpt, longpt, day_start = day_start, day_end = day_end)
   
-    start_time <- Sys.time()    
-    for (i in 1:nrow(TemplateCore)){
-   # for (i in 1:2) {   
-  #for (i in 1:10) {
-      lat <- TemplatefromCSV$latitude[i]
-      lon <- TemplatefromCSV$longitude[i]
-      locID <- TemplatefromCSV$locationid[i]
-fcst1 <- data.frame()    #clears weather_df dataframe - resets it
-#  fcst1 pull forecast and LTN for the period year_start to year_end
-fcst1 <- generateaWhereDataset(lat = lat, lon = lon, 
-                                day_start = day_start, 
-                                day_end = day_end, 
-                                year_start = year_start, 
-                                year_end = year_end)# %>% 
+
+start.time <- Sys.time()    
+
+# loops through all location ID's in the template file
+for (i in 1:nrow(template.place)){
+  
+  # get the current lat, lon, and location ID 
+  lat <- template.place$latitude[i]
+  lon <- template.place$longitude[i]
+  loc.ID <- template.place$locationid[i]
+
+  # clear/reset the forecast data frame
+  forecast1 <- data.frame()    
+  
+  # pull forecast and LTN for the period year_start to year_end
+  forecast1 <- generateaWhereDataset(lat = lat, 
+                                 lon = lon, 
+                                 day_start = day.start, 
+                                 day_end = day.end, 
+                                 year_start = year.start, 
+                                 year_end = year.end)# %>% 
 #select( -c(accumulatedPrecipitation.amount,gdd,gdd.average,ppet, accumulatedPpet)) %>%
 #  select( -c(minTemp, maxTemp, precip, pet.amount, accumulatedPrecipitation.average)) %>%
 #  select( -c( accumulatedPet.amount, accumulatedPet.average, accumulatedPpet.average))
 
-fcst1 = fcst1[-1,]  #this removes the first row - which is observed
-fcst1$locationid <- locID
-#at this point, ONE location has forecast data - need to put that into another df
-print(i)
+  forecast1 = forecast1[-1,]  #this removes the first row - which is observed
+  forecast1$locationid <- loc.ID
 
-if(i==1) {
-manydata <- fcst1
-
-} else {
-  manydata <- rbind(fcst1, manydata)
-}
+  # combine forecast data into a single data frame: forecast.all
+  if(i==1) {
+    forecast.all <- forecast1
+  } else {
+    forecast.all <- rbind(forecast1, forecast.all)
+  }
 
 }  # End of looping through TemplateCore
- 
-    end_time <- Sys.time()
-    RunTime <- end_time - start_time
-    print(RunTime)
+
+# check the elapsed time
+end.time <- Sys.time()
+run.time <- end.time - start.time
+print(run.time)
     
-    
-    
-       
-    #to rebuild manydata, renames the forecast variables
+# to rebuild forecast.all, renames the forecast variables
    
+#    names(forecast.all)[grep("ppet.average", names(forecast.all))] <- "LTNppet"
+#    names(forecast.all)[grep("precipitation.average", names(forecast.all))] <- "LTN_Pre"
+#    names(forecast.all)[grep("precip.forecast", names(forecast.all))] <- "forePre"
+#    names(forecast.all)[grep("maxTemp.forecast", names(forecast.all))] <- "foremaxT"
+#    names(forecast.all)[grep("minTemp.forecast", names(forecast.all))] <- "foreminT"
+#    names(forecast.all)[grep("maxTemp.average", names(forecast.all))] <- "LTNmaxT"
+#    names(forecast.all)[grep("minTemp.average", names(forecast.all))] <- "LTNminT"
+#    names(forecast.all)[grep("pet.average", names(forecast.all))] <- "LTNpet"
     
- #   names(manydata)[grep("ppet.average", names(manydata))] <- "LTNppet"
-#    names(manydata)[grep("precipitation.average", names(manydata))] <- "LTN_Pre"
-#    names(manydata)[grep("precip.forecast", names(manydata))] <- "forePre"
-#    names(manydata)[grep("maxTemp.forecast", names(manydata))] <- "foremaxT"
-#    names(manydata)[grep("minTemp.forecast", names(manydata))] <- "foreminT"
-#    names(manydata)[grep("maxTemp.average", names(manydata))] <- "LTNmaxT"
-#    names(manydata)[grep("minTemp.average", names(manydata))] <- "LTNminT"
-#    names(manydata)[grep("pet.average", names(manydata))] <- "LTNpet"
-    
-       #this is crazy - if I write the manydata(df) to .csv, the READ the same .csv
-      #with the stringsAsFactors = FALSE THEN i can find the max and min dates, and add
-     #a few days to it so I can map say today +3 days as opposed to the whole 7 days forecast
-   # write.csv(manydata, file = paste0("C:/Data/R output/",outputfilename,".csv"))
-    write.csv(manydata, file = paste0(outputfilename,".csv"))
-   # manydata <- read.csv(file = paste0("C:/Data/R output/",outputfilename,".csv"), stringsAsFactors=FALSE)
-    manydata <- read.csv(file = paste0(outputfilename,".csv"), stringsAsFactors=FALSE)    
+# this is crazy - if I write the forecast.all(df) to .csv, the READ the same .csv
+# with the stringsAsFactors = FALSE THEN i can find the max and min dates, and add
+# a few days to it so I can map say today +3 days as opposed to the whole 7 days forecast
+
+write.csv(forecast.all, 
+          file = paste0(filename.out,
+                        ".csv"))
+
+forecast.all <- read.csv(file = paste0(filename.out, 
+                                       ".csv"), 
+                         stringsAsFactors=FALSE)    
  
   
   
     
     
-    #  ********************* STOP HERE  - the df manydata  will write your daily output to .csv
+#  ********************* STOP HERE  - the df forecast.all  will write your daily output to .csv
     
     
     
@@ -121,20 +128,20 @@ manydata <- fcst1
     
     
        
-    #with locationid in manydata - merge with TemplateCore anytime to get shapewkt, MAP!
+    #with locationid in forecast.all - merge with TemplateCore anytime to get shapewkt, MAP!
         # then write code to add up precip and LTN precip for any number of the days (1 to 7)
     # write that df to csv - map the forecast
 
-    #trying some mappable info using manydata -     
+    #trying some mappable info using forecast.all -     
 
 #get total Pre by locid
-        full7dayf <- aggregate(manydata$forePre, by=list(locationid=manydata$locationid), FUN=sum)
+        full7dayf <- aggregate(forecast.all$forePre, by=list(locationid=forecast.all$locationid), FUN=sum)
 #find min date - 
-        maxdate <- max(manydata$date)
-        mindate <- min(manydata$date)
+        maxdate <- max(forecast.all$date)
+        mindate <- min(forecast.all$date)
         targetdate <- as.Date(mindate)+4
-    day3forecast <- filter(manydata, manydata$date < targetdate)
-    #da3forecast now contains 'today' + 3 days  manydata has all 7 days
+    day3forecast <- filter(forecast.all, forecast.all$date < targetdate)
+    #da3forecast now contains 'today' + 3 days  forecast.all has all 7 days
     only4dayf <- aggregate(day3forecast$forePre, by=list(locationid=day3forecast$locationid), FUN=sum)
 #add shapewkt to full7dayf and map it    
     #subsetdata <- full7dayf[which(full7dayf$locationid %in% TemplateCore$locationid),] 
@@ -162,8 +169,8 @@ maptitle <- "Precip Forecast 8-14 April Odisha"
               breaks = seq(from = 0, to = 150, by = 20),
               id = "locationid", title = maptitle)    
            
-rm(fcst1)
-rm(manydata)
+rm(forecast1)
+rm(forecast.all)
 
 #select( -c(latitude.y, longitude.y, day.x, day.y, accumulatedGdd, accumulatedPpet )) %>%
 # select( -c(accumulatedPrecipitation.amount,accumulatedPet.amount )) 
@@ -197,7 +204,7 @@ ag <- agronomic_values_latlng(lat, lon, day_start, day_end) %>%
 
 names(ag)[grep("pet.amount", names(ag))] <- "PET"
 
-manydata <- merge(obs, ag, by = c("date")) %>% 
+forecast.all <- merge(obs, ag, by = c("date")) %>% 
   
   select( -c(latitude.y, longitude.y, day.x, day.y, accumulatedGdd, accumulatedPpet )) %>%
   select( -c(accumulatedPrecipitation.amount,accumulatedPet.amount )) 
@@ -206,7 +213,7 @@ manydata <- merge(obs, ag, by = c("date")) %>%
 #colnames(weather_full) <- c("monthday", "lat", "long", "accPrecipLTN")
 
 
-write.csv(manydata, file = paste0("C:/Data/R output/",outputfilename,".csv"))
+write.csv(forecast.all, file = paste0("C:/Data/R output/",outputfilename,".csv"))
 
 
 
