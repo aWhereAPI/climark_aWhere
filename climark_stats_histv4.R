@@ -528,7 +528,7 @@ climark_map <- function(df, v = "pre", climark.filename, base.map){
   # print the titles to make sure they are correct
   print(paste0("Main title: ", title.main))
   print(paste0("Legend title: ", title.legend))
-  
+
   # map the variable 
   climark.map = ggmap(base.map) +
     geom_polygon( aes( x = lng, 

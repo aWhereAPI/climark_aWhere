@@ -31,7 +31,7 @@ template.place <- read.csv(template.file) %>%
              WARD_NAME))
 
 # Specify subregion (ward in this case) to forecast
-ward.select <- "CHERAB"
+ward.select <- "KARARE"
 # filter the template data to contain only grid cells within the ward
 template.place <- template.place %>% 
   filter(WARD_NAME %in% ward.select)
@@ -55,7 +55,7 @@ start.time <- Sys.time()
 
 # loops through all location ID's in the template file
 for (i in 1:nrow(template.place)){
-  
+  print(i)
   # get the current lat, lon, and location ID 
   lat <- template.place$latitude[i]
   lon <- template.place$longitude[i]
@@ -165,9 +165,7 @@ climark_map(df = polygon.df,
 # manually creating plot --------------------------------------------------
 
 # define the main and legend titles for the plot 
-climark.map.title.precip <- paste0("Precipitation ", 
-                         min.date,"  ", 
-                         max.date) 
+climark.map.title.precip <- paste("Forecast", min.date, "to", max.date, sep = " ") 
 climark.map.var.precip <- "Precipitation (mm)"
 
 map.precip = ggmap(base.map.climark) +
