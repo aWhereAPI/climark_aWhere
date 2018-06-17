@@ -80,21 +80,6 @@ end.time <- Sys.time()
 run.time <- end.time - start.time
 print(run.time)
     
-# to rebuild forecast.all, renames the forecast variables
-   
-#    names(forecast.all)[grep("ppet.average", names(forecast.all))] <- "LTNppet"
-#    names(forecast.all)[grep("precipitation.average", names(forecast.all))] <- "LTN_Pre"
-#    names(forecast.all)[grep("precip.forecast", names(forecast.all))] <- "forePre"
-#    names(forecast.all)[grep("maxTemp.forecast", names(forecast.all))] <- "foremaxT"
-#    names(forecast.all)[grep("minTemp.forecast", names(forecast.all))] <- "foreminT"
-#    names(forecast.all)[grep("maxTemp.average", names(forecast.all))] <- "LTNmaxT"
-#    names(forecast.all)[grep("minTemp.average", names(forecast.all))] <- "LTNminT"
-#    names(forecast.all)[grep("pet.average", names(forecast.all))] <- "LTNpet"
-    
-# this is crazy - if I write the forecast.all(df) to .csv, the READ the same .csv
-# with the stringsAsFactors = FALSE THEN i can find the max and min dates, and add
-# a few days to it so I can map say today +3 days as opposed to the whole 7 days forecast
-
 write.csv(forecast.all, 
           file = paste0(filename.out,
                         ".csv"))
@@ -104,7 +89,7 @@ forecast.all <- read.csv(file = paste0(filename.out,
                          stringsAsFactors=FALSE)    
 
 
-# Aggregate for n-day forecast summaries ------------------------------------
+# n-day forecast summaries ------------------------------------
 
 # Aggregate the 7-day forecasted total precipitation 
 # (column "x" in the data frame created below)
@@ -153,8 +138,23 @@ dt2[,aPre := ggmap.df$x]
 dt2[aPre > 299, aPre := 300]
 ggmap.df <- as.data.frame(dt2)
 
+# Expand wkt to format usable by ggplot
 polygon.df = as.tibble(wicket::wkt_coords(ggmap.df$shapewkt))
 polygon.df$aPre <- ggmap.df$aPre[polygon.df$object]  
+
+# Create precipitation map -------> use the function created in the climark_stats_hist script! 
+climark_map(df = polygon.df, 
+            v = "pre", 
+            paste("Forecast", min.date, "to", max.date, sep = " "), 
+            base.map.climark)
+
+
+
+
+
+# manually creating plot --------------------------------------------------
+
+# define the main and legend titles for the plot 
 climark.map.title.precip <- paste0("Precipitation ", 
                          min.date,"  ", 
                          max.date) 
@@ -183,118 +183,5 @@ ggsave(filename = paste0(climark.map.title.precip,
        width = 6.02, 
        height = 3.38, 
        units = "in")
-  
-    
-    
-#  ********************* STOP HERE  - the df forecast.all  will write your daily output to .csv
-    
-    
-    
-      
-    
-    
-       
-    #with locationid in forecast.all - merge with TemplateCore anytime to get shapewkt, MAP!
-        # then write code to add up precip and LTN precip for any number of the days (1 to 7)
-    # write that df to csv - map the forecast
-
-    #trying some mappable info using forecast.all -     
-
-#get total Pre by locid
-        full7dayf <- aggregate(forecast.all$forePre, by=list(locationid=forecast.all$locationid), FUN=sum)
-#find min date - 
-        maxdate <- max(forecast.all$date)
-        mindate <- min(forecast.all$date)
-        targetdate <- as.Date(mindate)+4
-    day3forecast <- filter(forecast.all, forecast.all$date < targetdate)
-    #da3forecast now contains 'today' + 3 days  forecast.all has all 7 days
-    only4dayf <- aggregate(day3forecast$forePre, by=list(locationid=day3forecast$locationid), FUN=sum)
-#add shapewkt to full7dayf and map it    
-    #subsetdata <- full7dayf[which(full7dayf$locationid %in% TemplateCore$locationid),] 
-    map.forecast.7 <- merge(full7dayf, TemplateCore)
-    map.forecast.4 <- merge(only4dayf, TemplateCore)
-    
-    
-    AOItemplate <- st_as_sf(map.forecast.7, wkt = "WKT")
-    st_crs(AOItemplate) = 4326   #this is the code to WGS84 projection
-maptitle <- "Precip Forecast 8-14 April Odisha"
-    tmap_mode("view")
-    tm_shape(AOItemplate) +
-      tm_fill("x", palette = (RColorBrewer::brewer.pal(9, "RdYlGn")), auto.palette.mapping = FALSE,
-              style = "cont",
-              breaks = seq(from = 0, to = 150, by = 20),
-              id = "locationid", title = maptitle)
- 
-       AOItemplate <- st_as_sf(map.forecast.4, wkt = "WKT")
-    st_crs(AOItemplate) = 4326   #this is the code to WGS84 projection
-    maptitle <- "Precip (mm) Forecast 8-11 April Odisha"
-    tmap_mode("view")
-    tm_shape(AOItemplate) +
-      tm_fill("x", palette = (RColorBrewer::brewer.pal(9, "RdYlGn")), auto.palette.mapping = FALSE,
-              style = "cont",
-              breaks = seq(from = 0, to = 150, by = 20),
-              id = "locationid", title = maptitle)    
-           
-rm(forecast1)
-rm(forecast.all)
-
-#select( -c(latitude.y, longitude.y, day.x, day.y, accumulatedGdd, accumulatedPpet )) %>%
-# select( -c(accumulatedPrecipitation.amount,accumulatedPet.amount )) 
 
 
-
-
-
-
-obs <- daily_observed_latlng(lat, lon, day_start, day_end) %>% 
-  cbind(., data.frame(do.call(rbind, strsplit(.$date, "-")))) %>% 
-  mutate(day = paste0(X2, "-", X3))%>% 
-  select(-c(X1,X2,X3))
-#can control which columns and what order in final dataframe using select
-
-names(obs)[grep("location.latitude", names(obs))] <- "latitude"
-names(obs)[grep("location.longitude", names(obs))] <- "longitude"
-names(obs)[grep("temperatures.max", names(obs))] <- "maxTemp"
-names(obs)[grep("temperatures.min", names(obs))] <- "minTemp"
-names(obs)[grep("precipitation.amount", names(obs))] <- "Precip"
-names(obs)[grep("relativeHumidity.max", names(obs))] <- "RHmax"
-names(obs)[grep("relativeHumidity.min", names(obs))] <- "RHmin"
-names(obs)[grep("wind.morningMax", names(obs))] <- "windmornmax"
-names(obs)[grep("wind.average", names(obs))] <- "windavg"
-names(obs)[grep("wind.dayMax", names(obs))] <- "winddaymax"
-
-ag <- agronomic_values_latlng(lat, lon, day_start, day_end) %>% 
-  cbind(., data.frame(do.call(rbind, strsplit(.$date, "-")))) %>% 
-  mutate(day = paste0(X2, "-", X3)) %>% 
-  select(-c(X1,X2,X3))
-
-names(ag)[grep("pet.amount", names(ag))] <- "PET"
-
-forecast.all <- merge(obs, ag, by = c("date")) %>% 
-  
-  select( -c(latitude.y, longitude.y, day.x, day.y, accumulatedGdd, accumulatedPpet )) %>%
-  select( -c(accumulatedPrecipitation.amount,accumulatedPet.amount )) 
-
-#  select(day, latitude.x, longitude.x, accumulatedPrecipitation.amount)
-#colnames(weather_full) <- c("monthday", "lat", "long", "accPrecipLTN")
-
-
-write.csv(forecast.all, file = paste0("C:/Data/R output/",outputfilename,".csv"))
-
-
-
-
-
-
-
-
-#outputfilename <- "rainfall vs LTN Chart"  #this is the .csv tile - if unchanged it may overwrite an existing file
-#year_start <- 2008
-#year_end <- 2016     #LTN is defined as 2008-2016  (in 2018, change this to 2017)
-#writeFile <- FALSE
-
-#if (writeFile == TRUE) {
-#  write.csv(weather_df, file = paste0("C:/Data/R output/",outputfilename,".csv"))
-#} else {
-#  cat("Caution: Weather dataset not written to disk")
-#}
