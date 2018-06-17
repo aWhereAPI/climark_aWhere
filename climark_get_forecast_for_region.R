@@ -27,10 +27,19 @@ template.place <- read.csv(template.file) %>%
   select( c(locationid, 
              latitude,
              longitude,
-             shapewkt))
+             shapewkt,
+             WARD_NAME))
+
+# Specify subregion (ward in this case) to forecast
+ward.select <- "CHERAB"
+# filter the template data to contain only grid cells within the ward
+template.place <- template.place %>% 
+  filter(WARD_NAME %in% ward.select)
 
 # Define the output filename for the forecast
-filename.out <- "AOI_Forecast"
+filename.out <- paste("AOI_Forecast",
+                      ward.select,
+                      sep = "_")
 
 # specify the start day
 day.start <- as.character(Sys.Date()-1)   # yesterday
@@ -129,7 +138,8 @@ gg.map <- ggmap(base.map.climark)
 gg.map
 
 # ggmap method - specify which forecast (4-day or 7-day in this case) to map
-ggmap.df <- map.forecast.4 
+ggmap.df <- map.forecast.day3 
+ggmap.df <- map.forecast.day7
 
 # convert to data table. clip sum precip values
 # greater than 299 to 300. convert back to data frame. 
