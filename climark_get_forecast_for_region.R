@@ -14,7 +14,7 @@ library(aWhereCharts)
 setwd("~/Documents/aWhere/") #VS
 
 load_credentials("c:/2018 work/awhere/Projects/R Working Directory/JC_credentials.txt") #JC
-load_credentials("~/Documents/aWhere/awhere_credentials_VS.txt") #VS
+load_credentials("~/Documents/aWhere/credentials.txt") 
 
 # define the starting and ending year to calculate the LTN
 # in the generateaWhereDataset function
