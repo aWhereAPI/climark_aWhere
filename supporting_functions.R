@@ -1,13 +1,25 @@
 GetDays <- function(starting.day, forecast.days, ending.day=FALSE){
+  # Generate the starting and ending days for a forecast. 
   #
+  # Args: 
+  #   starting.day
+  #     (string) the first day of the forecast. Acceptable values are "today",
+  #     "yesterday", "tomorrow", or a specific date with format "YYYY-MM-DD"
   #
+  #   forecast.days 
+  #     (vector of numeric value(s)) duration of the forecast(s).
+  #     For a 7- and 3-day forecast: c(7,3). 
   #
+  #   ending.day
+  #     (optional, string with format "YYYY-MM-DD") if supplied, this will be
+  #     the last day of the forecast. Otherwise, the ending day is calculated
+  #     by adding the greatest value in forecast.days to the starting date.
   #
+  # Returns
   #
+  #   days
+  #     (list of characters) starting day in position 1; ending day in position 2
   #
-  #
-  #
-  
   
   # get starting day from input string
   if (base::identical(starting.day,"today")) {
@@ -39,6 +51,10 @@ GetDays <- function(starting.day, forecast.days, ending.day=FALSE){
   
   }
   
+  # check if the forecast duration is greater than 7 days 
+  if (base::as.Date(day.end) - base::as.Date(day.start) > 7) {
+    print("Forecast duration cannot exceed 7 days.")
+  }
   
   # combine starting and ending days into single variable
   days <- base::c(day.start, day.end)
@@ -52,14 +68,32 @@ GetDays <- function(starting.day, forecast.days, ending.day=FALSE){
 
 GetForecastData <- function(template.place, days, years, 
                         write.file = FALSE, filename.out = "forecast"){
+  # pulls forecast data from the aWhere API for the specified days/years.
   #
+  # Args
+  #   template.place 
+  #     (data.frame) contains the geographic data for each grid cell
   #
+  #   days
+  #     (list of characters) starting day in position 1; ending day in position 2
+  #     each with the format "YYYY-MM-DD"
   #
+  #   years 
+  #     (list of numerics) starting year in position 1; ending year in position 2
+  #     used to calculate long term values
   #
+  #   write.file
+  #     (optional, boolean with default value FALSE) when true, the forecast
+  #     data is written to a .csv file 
   #
+  #   filename.out
+  #     (optional, character string with default value "forecast") used to name
+  #     the output file 
   #
-  #
-  #
+  # Returns 
+  #   forecast.all
+  #     (data.frame) containing all of the n-day forecast data.
+  # 
   
   # start timer to record how long pulling forecast data takes
   start.time <- base::Sys.time() 
@@ -127,16 +161,20 @@ GetForecastData <- function(template.place, days, years,
 
 GetForecastSummary <- function(forecast.all, n.day.forecasts,
                                template.place){
+  # Sum the n-day forecast values at every location.
   #
+  # Args: 
+  #   forecast.all
+  #     (data.frame) containing all of the n-day forecast data.
   #
+  #   n.day.forecasts
+  #     (vector of numeric value(s)) duration of the forecast(s).
+  #     For a 7- and 3-day forecast: c(7,3).
   #
-  #
-  #
-  #
-  #
+  #   template.place
+  #     (data.frame) contains the geographic data for each grid cell
   #
   
-
   # loop through the requested n-day forecast summaries 
   for (i in 1:(base::length(n.day.forecasts))){
 
@@ -265,13 +303,16 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
   #         "ppet" = P / PET 
   #         "pltn" = recip vrs. LTN precip
   #
-  #   map.name
-  #     character string to name the map and output accordingly
-  #
   #   base.map
   #     terrain map image from Google Maps to overlay the mapped variable
   #
-  # 
+  #   map.name
+  #     character string to name the map and output accordingly
+  #
+  #   write.file 
+  #     (optional, boolean with default value FALSE) when true, the forecast
+  #     data is written to a .csv file
+  #
   
   
   # set the main title, legend titles, and other map parameters 

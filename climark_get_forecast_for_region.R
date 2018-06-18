@@ -35,7 +35,7 @@ years <- c(2010, 2017)
 # end day is calculated using the largest value in n.day.forecasts vector.
 # to specify a different end day, add the "ending.day" argument
 # to the GetDays function with a specific end date, "YYYY-MM-DD". 
-day.start <- "yesterday"
+day.start <- "today"
 days <- GetDays(starting.day = day.start, 
                 forecast.days = n.day.forecasts)
 
