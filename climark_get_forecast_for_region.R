@@ -1,195 +1,120 @@
-# load required packages 
+# this script gets a forecast for a specific region by querying the aWhere API. 
+# forecase data can be aggregated for n day forecast(s).
+
+# install / load required packages ----------------------------------------
 library(dplyr)
 library(ggmap)
-library(data.table)
 library(tibble)
+library(wicket)
+library(ggplot2)
 library(aWhereAPI)
 library(aWhereCharts)
 
-# get a forecast for a region - 1 to 7 day aggregate
-# read in the region then using the lat, long - pull the forecast 
+# load external functions 
+source("supporting_functions.R")
 
-#authenticate yourself to aWhere API & set working directory
-#setwd("c:/Data/CLIMARK/Project2018/")  
-setwd("~/Documents/aWhere/") #VS
 
-load_credentials("c:/2018 work/awhere/Projects/R Working Directory/JC_credentials.txt") #JC
-load_credentials("~/Documents/aWhere/credentials.txt") 
+# define input paths and variables ----------------------------------------
 
-# define the starting and ending year to calculate the LTN
-# in the generateaWhereDataset function
-year.start <- 2010  
-year.end <- 2017
+# working directory - where input files are located and outputs will be saved.
+working.dir <- "~/Documents/aWhere/"
 
-# Read the template for which a forecast will be mapped
+# filename containing your aWhere credientials (key and secret)
+# to access data from the aWhere API.
+credentials.file <- "credentials.txt"
+
+# length of forecast(s) in a vector. For a 7-day and 3-day forecast, 
+# n.day.forecasts <- c(7, 3)
+n.day.forecasts <- c(7, 3)
+
+# starting and ending years and days for the forecast. each is a vector with 
+# the starting value in position 1 and the ending value in position 2. 
+years <- c(2010, 2017)
+
+# start day can "today", "yesterday", "tomorrow", or "YYYY-MM-DD". 
+# end day is calculated using the largest value in n.day.forecasts vector.
+# to specify a different end day, add the "ending.day" argument
+# to the GetDays function with a specific end date, "YYYY-MM-DD". 
+day.start <- "yesterday"
+days <- GetDays(starting.day = day.start, 
+                forecast.days = n.day.forecasts)
+
+# template file containing geographic data across a region.
 template.file <- "CLIMARKonlyWardTemplate.csv"
-template.place <- read.csv(template.file) %>% 
-  select( c(locationid, 
-             latitude,
-             longitude,
-             shapewkt,
-             WARD_NAME))
 
-# Specify subregion (ward in this case) to forecast
-ward.select <- "KARARE"
-# filter the template data to contain only grid cells within the ward
-template.place <- template.place %>% 
-  filter(WARD_NAME %in% ward.select)
+# to select subarea(s) of interest, list their names in this vector.
+# for now, these subareas are limited to ward names. To generate a forecast
+# for the entire region instead, set subarea.select to ENTIRE_REGION. 
+subarea.select <- "ENTIRE_REGION"
+subarea.select <- "KARARE" #c("KARARE", "GOLBO")
 
-# Define the output filename for the forecast
+# base filename for outputs. currently incorporates the name(s) of the 
+# subarea(s) of interest, but you can set it to be anything. 
 filename.out <- paste("AOI_Forecast",
-                      ward.select,
+                      paste(subarea.select, collapse="_"),
                       sep = "_")
 
-# specify the start day
-day.start <- as.character(Sys.Date()-1)   # yesterday
-#day.start <- as.character((Sys.Date()))  # today - for forecast
-#day.start <- "2018-06-05" #              specific date 
+# base map location and zoom values for mapping the forecast data. 
+map.lat <- 2.5
+map.lon <- 38
+map.zoom <- 7
 
-# specify the end day
-#day.end <- as.character(Sys.Date()-1) # yesterday
-day.end <- as.character(Sys.Date()+7) # 7 days from now
-#day.end <- "2018-06-10" # fixed end date
+# set thresholds for different variables during mapping
+thresh.precip.max <- 300 # [mm]
+thresh.precip.min <- 0 # [mm]
 
-start.time <- Sys.time()    
+# processing steps --------------------------------------------------------
 
-# loops through all location ID's in the template file
-for (i in 1:nrow(template.place)){
-  print(i)
-  # get the current lat, lon, and location ID 
-  lat <- template.place$latitude[i]
-  lon <- template.place$longitude[i]
-  loc.ID <- template.place$locationid[i]
+# set the working directory 
+base::setwd(working.dir) 
 
-  # clear/reset the forecast data frame
-  forecast1 <- data.frame()    
+# load the aWhere API credentials file 
+aWhereAPI::load_credentials(credentials.file) 
+
+# read the template data 
+template.place <- utils::read.csv(template.file) 
+
+# filter the template for subarea(s) of interest
+if (!identical(subarea.select, "ENTIRE_REGION")){ 
   
-  # pull forecast and LTN for the period year.start to year.end
-  forecast1 <- generateaWhereDataset(lat = lat, 
-                                 lon = lon, 
-                                 day_start = day.start, 
-                                 day_end = day.end, 
-                                 year_start = year.start, 
-                                 year_end = year.end)
+  template.place <- template.place %>% 
+    dplyr::filter(WARD_NAME %in% subarea.select) 
   
-  forecast1 = forecast1[-1,]  #this removes the first row - which is observed
-  forecast1$locationid <- loc.ID
+} 
 
-  # combine forecast data into a single data frame: forecast.all
-  if(i==1) {
-    forecast.all <- forecast1
-  } else {
-    forecast.all <- rbind(forecast1, forecast.all)
-  }
+# query the aWhere API to get forecast data and write to file 
+forecast.all <- GetForecastData(template.place, days, years, 
+                                write.file = TRUE, filename.out = filename.out)
 
-}  # End of looping through template data
-
-# check the elapsed time
-end.time <- Sys.time()
-run.time <- end.time - start.time
-print(run.time)
-    
-write.csv(forecast.all, 
-          file = paste0(filename.out,
-                        ".csv"))
-
-forecast.all <- read.csv(file = paste0(filename.out, 
-                                       ".csv"), 
-                         stringsAsFactors=FALSE)    
+# calculate the n-day forecast summaries,
+# aggregate weather data over the specified number of days.
+forecasts.n <- GetForecastSummary(forecast.all, n.day.forecasts, 
+                                  template.place)
 
 
-# n-day forecast summaries ------------------------------------
 
-# Aggregate the 7-day forecasted total precipitation 
-# (column "x" in the data frame created below)
-day7.forecast <- aggregate(forecast.all$precipitation.amount, 
-            by=list(locationid=forecast.all$locationid), 
-            FUN=sum)
+# map forecast summaries --------------------------------------------------
 
-# find min/max dates within forecast 
-max.date <- max(forecast.all$date)
-min.date <- min(forecast.all$date)
-target.date <- as.Date(min.date)+4
+# create a data frame for the variable thresholds.
+# access the variable by referencing the column (thresholds$precip)
+# the minimum values is in position 1, maximum value in position 2
+thresholds <- base::as.data.frame(c(thresh.precip.min, thresh.precip.max))
+base::colnames(thresholds) <- "precip"
+base::row.names(thresholds) <- (c("min","max"))
 
-# filter forecast data to only contain "today" + 3 days
-day3.forecast <- filter(forecast.all, 
-                        forecast.all$date < target.date) 
-
-day3.forecast <- aggregate(day3.forecast$precipitation.amount, 
-                       by=list(locationid=day3.forecast$locationid), 
-                       FUN=sum)
-
-# Add shapewkt to full.7day.forecast and map it    
-map.forecast.day7 <- merge(day7.forecast, template.place)
-map.forecast.day3 <- merge(day3.forecast, template.place)
-
-
-# Mapping the forecast summary ----------------------------------------------------
-
-# specify lat/long coordinates. 38 and 2 are good for CLIMARK, zoom 7
-lon.x = 38  # center of get_map longitude 
-lat.y = 2.5   # center of get_map latitude 
-base.map.climark = get_map(location = c(lon = lon.x, lat = lat.y), 
-                           zoom = 7, 
-                           color = "bw")
-
-# display map of CLIMARK region
-gg.map <- ggmap(base.map.climark)
+# create the base map using the parameters defined earlier
+base.map = get_map(location = c(lon = map.lon, 
+                                lat = map.lat), 
+                   zoom = map.zoom, 
+                   color = "bw")
+# display map of region
+gg.map <- ggmap(base.map)
 gg.map
 
-# ggmap method - specify which forecast (4-day or 7-day in this case) to map
-ggmap.df <- map.forecast.day3 
-ggmap.df <- map.forecast.day7
 
-# convert to data table. clip sum precip values
-# greater than 299 to 300. convert back to data frame. 
-dt2 <- as.data.table(ggmap.df)
-dt2[,aPre := ggmap.df$x]
-dt2[aPre > 299, aPre := 300]
-ggmap.df <- as.data.frame(dt2)
+# map the forecast summaries one at a time 
+forecast.maps <- MapForecast(forecasts.n, base.map, thresholds)
 
-# Expand wkt to format usable by ggplot
-polygon.df = as.tibble(wicket::wkt_coords(ggmap.df$shapewkt))
-polygon.df$aPre <- ggmap.df$aPre[polygon.df$object]  
-
-# Create precipitation map -------> use the function created in the climark_stats_hist script! 
-climark_map(df = polygon.df, 
-            v = "pre", 
-            paste("Forecast", min.date, "to", max.date, sep = " "), 
-            base.map.climark)
-
-
-
-
-
-# manually creating plot --------------------------------------------------
-
-# define the main and legend titles for the plot 
-climark.map.title.precip <- paste("Forecast", min.date, "to", max.date, sep = " ") 
-climark.map.var.precip <- "Precipitation (mm)"
-
-map.precip = ggmap(base.map.climark) +
-  geom_polygon( aes( x = lng, 
-                     y = lat, 
-                     group = object, 
-                     fill = aPre),
-                data = polygon.df, 
-                alpha = 0.7) +
-  scale_fill_gradient2(breaks = seq(0,300, by = 50), 
-                       low = "red", 
-                       mid = "green",
-                       high = "blue", 
-                       midpoint = 150, name=climark.map.var.precip ) +
-  ggtitle(climark.map.title.precip)
-
-map.precip
-
-# save map to file 
-ggsave(filename = paste0(climark.map.title.precip,
-                         ".png"), 
-       map.precip, 
-       width = 6.02, 
-       height = 3.38, 
-       units = "in")
-
+# to access one of the individual forecast maps: 
+forecast.maps$`3-day`
 
