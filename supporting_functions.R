@@ -326,6 +326,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
     c.low <- "red"
     c.mid <- "green"
     c.high <- "blue"
+    mid.point <- 150
     
   } else if(v=="ppet") { # P / PET 
     title.main <- paste0("P/PET ", 
@@ -336,6 +337,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
     c.low <- "red"
     c.mid <- "green"
     c.high <- "blue"
+    mid.point <- 1.0
     
   } else if(v=="pltn") { # LTN Pre
     title.main <- paste0("Precip vrs. LTN Precip ", 
@@ -346,6 +348,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
     c.low <- "red"
     c.mid <- "white"
     c.high <- "blue"
+    mid.point <- 0
     
   } else {
     print("Unknown variable type provided. Please use 'pre', 'ppet', or 'pltn' ")
@@ -367,6 +370,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
                          low = c.low, 
                          mid = c.mid,
                          high = c.high, 
+                         midpoint = mid.point,
                          name = title.legend ) +
     ggplot2::ggtitle(title.main)
   climark.map
@@ -383,5 +387,22 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
   }
   
   return(climark.map)
+  
+}
+
+
+# WriteJpeg ---------------------------------------------------------------
+
+WriteJpeg <- function(plt, plt.title, w=10, h=6, u="in", r=500){
+  
+  # write plot to image file
+  jpeg(paste0(plt.title, ".jpeg"), 
+       width = w, 
+       height = h, 
+       units = u, 
+       res = r)
+  
+  print(plt)
+  dev.off()
   
 }

@@ -2,6 +2,11 @@
 # forecase data can be aggregated for n day forecast(s).
 
 # install / load required packages ----------------------------------------
+
+# install aWhere R packages
+#devtools::install_github("aWhereAPI/aWhere-R-Library")
+#devtools::install_github("aWhereAPI/aWhere-R-ChartLibrary")
+
 library(dplyr)
 library(ggmap)
 library(tibble)
@@ -25,7 +30,7 @@ credentials.file <- "credentials.txt"
 
 # length of forecast(s) in a vector. For a 7-day and 3-day forecast, 
 # n.day.forecasts <- c(7, 3)
-n.day.forecasts <- c(7, 3)
+n.day.forecasts <- c(3)
 
 # starting and ending years and days for the forecast. each is a vector with 
 # the starting value in position 1 and the ending value in position 2. 
@@ -35,7 +40,7 @@ years <- c(2010, 2017)
 # end day is calculated using the largest value in n.day.forecasts vector.
 # to specify a different end day, add the "ending.day" argument
 # to the GetDays function with a specific end date, "YYYY-MM-DD". 
-day.start <- "today"
+day.start <- "yesterday"
 days <- GetDays(starting.day = day.start, 
                 forecast.days = n.day.forecasts)
 
@@ -46,7 +51,7 @@ template.file <- "CLIMARKonlyWardTemplate.csv"
 # for now, these subareas are limited to ward names. To generate a forecast
 # for the entire region instead, set subarea.select to ENTIRE_REGION. 
 subarea.select <- "ENTIRE_REGION"
-subarea.select <- "KARARE" #c("KARARE", "GOLBO")
+#subarea.select <- "KARARE" #c("KARARE", "GOLBO")
 
 # base filename for outputs. currently incorporates the name(s) of the 
 # subarea(s) of interest, but you can set it to be anything. 
@@ -107,14 +112,15 @@ base.map = get_map(location = c(lon = map.lon,
                                 lat = map.lat), 
                    zoom = map.zoom, 
                    color = "bw")
+
 # display map of region
 gg.map <- ggmap(base.map)
 gg.map
-
 
 # map the forecast summaries one at a time 
 forecast.maps <- MapForecast(forecasts.n, base.map, thresholds)
 
 # to access one of the individual forecast maps: 
 forecast.maps$`3-day`
+
 
