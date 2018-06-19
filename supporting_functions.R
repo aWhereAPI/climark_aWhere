@@ -25,17 +25,17 @@ GetDays <- function(starting.day, forecast.days, ending.day=FALSE){
   #
   
   # get starting day from input string
-  if (base::identical(starting.day,"today")) {
+  if (identical(starting.day,"today")) {
     
-    day.start <- base::as.character(Sys.Date())
+    day.start <- as.character(Sys.Date())
     
-  } else if (base::identical(starting.day, "yesterday")) { 
+  } else if (identical(starting.day, "yesterday")) { 
     
-    day.start <- base::as.character(Sys.Date() - 1)
+    day.start <- as.character(Sys.Date() - 1)
     
-  } else if (base::identical(starting.day, "tomorrow")) { 
+  } else if (identical(starting.day, "tomorrow")) { 
     
-    day.start <- base::as.character(Sys.Date() + 1)
+    day.start <- as.character(Sys.Date() + 1)
     
     } else { # date is already specific YYYY-MM-DD 
     
@@ -49,18 +49,18 @@ GetDays <- function(starting.day, forecast.days, ending.day=FALSE){
     
   } else { # calculate ending day, starting day + largest forecast duration
     
-    day.end <- base::as.character(base::as.Date(day.start) + 
-                                  base::max(forecast.days))
+    day.end <- as.character(as.Date(day.start) + 
+                                  max(forecast.days))
   
   }
   
   # check if the forecast duration is greater than 7 days 
-  if (base::as.Date(day.end) - base::as.Date(day.start) > 7) {
+  if (as.Date(day.end) - as.Date(day.start) > 7) {
     print("Forecast duration cannot exceed 7 days.")
   }
   
   # combine starting and ending days into single variable
-  days <- base::c(day.start, day.end)
+  days <- c(day.start, day.end)
   
   return(days)
   
@@ -101,15 +101,15 @@ GetForecastData <- function(template.place, days, years,
   # 
   
   # start timer to record how long pulling forecast data takes
-  start.time <- base::Sys.time() 
+  start.time <- Sys.time() 
   
   # loops through all location ID's in the template file
-  for (i in 1:(base::nrow(template.place))){
+  for (i in 1:(nrow(template.place))){
     
     # print progress for the user
-    base::print(base::paste("Getting forecast", 
-                      base::as.character(i), "/", 
-                      base::as.character(base::nrow(template.place)), 
+    print(paste("Getting forecast", 
+                      as.character(i), "/", 
+                      as.character(nrow(template.place)), 
                       sep = " "))
     
     # get the current lat, lon, and location ID 
@@ -135,15 +135,15 @@ GetForecastData <- function(template.place, days, years,
     if(i==1) {
       forecast.all <- forecast1
     } else {
-      forecast.all <- base::rbind(forecast1, forecast.all)
+      forecast.all <- rbind(forecast1, forecast.all)
     }
     
   }  
   
   # check the elapsed time
-  end.time <- base::Sys.time()
+  end.time <- Sys.time()
   run.time <- end.time - start.time
-  base::print(run.time)
+  print(run.time)
   
   # write the forecast data to .csv 
   if (write.file == TRUE){
@@ -151,9 +151,9 @@ GetForecastData <- function(template.place, days, years,
     # create the output filename using the function argument along with
     # the days and years of the forecast
     utils::write.csv(forecast.all, 
-            file = base::paste0(base::paste(filename.out,
-                          base::paste(days, collapse="_"),
-                          base::paste(years, collapse="_"),
+            file = paste0(paste(filename.out,
+                          paste(days, collapse="_"),
+                          paste(years, collapse="_"),
                           sep="_"),".csv"))
   }
   
@@ -183,14 +183,14 @@ GetForecastSummary <- function(forecast.all, n.day.forecasts,
   #
   
   # loop through the requested n-day forecast summaries 
-  for (i in 1:(base::length(n.day.forecasts))){
+  for (i in 1:(length(n.day.forecasts))){
 
     # get the current forecast duration 
     n <- n.day.forecasts[i]
     
     # calculate the end date of the forecast
-    min.date <- base::min(forecast.all$date)
-    target.date <- base::as.Date(min.date) + n
+    min.date <- min(forecast.all$date)
+    target.date <- as.Date(min.date) + n
     
     # remove forecast data beyond the n-day duration.
     # for each location ID, calculate cumulative forecasted precipitation
@@ -207,11 +207,11 @@ GetForecastSummary <- function(forecast.all, n.day.forecasts,
     if(i==1) {
       forecast.summaries <- forecast.summary
     } else {
-      forecast.summaries <- base::rbind(forecast.summary, forecast.summaries)
+      forecast.summaries <- rbind(forecast.summary, forecast.summaries)
     }
     
     # add geometry data to each location for mapping 
-    forecast.summaries.geo <- base::merge(forecast.summaries,
+    forecast.summaries.geo <- merge(forecast.summaries,
                                           template.place)
     
   }
@@ -260,7 +260,7 @@ MapForecast <- function(forecasts.n, base.map, thresholds){
   n.days <- unique(forecasts.n$n.day)
   
   # loop through the requested n-day forecast summaries 
-  for (i in 1:(base::length(n.days))){
+  for (i in 1:(length(n.days))){
     
     # get the current forecast duration 
     n <- n.days[i]
@@ -278,8 +278,8 @@ MapForecast <- function(forecasts.n, base.map, thresholds){
     polygon.df$aPre <- forecast$aPre[polygon.df$object] 
     
     # add n-day forecast to output filename
-    filename.out.current <- base::paste0(filename.out, "_",
-                                base::as.character(n), "-day_forecast")
+    filename.out.current <- paste0(filename.out, "_",
+                                as.character(n), "-day_forecast")
     
     # create the map, save to file 
     forecast.map <- MakeMap(df = polygon.df, v = "pre", 
@@ -337,7 +337,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
                          map.name)
     title.legend <- "Precipitation (mm)"
     fill.var <- "aPre"
-    gradient.breaks <- base::seq(0,300, by = 50)
+    gradient.breaks <- seq(0,300, by = 50)
     c.low <- "red"
     c.mid <- "green"
     c.high <- "blue"
@@ -348,7 +348,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
                          map.name) 
     title.legend <- "P/PET"
     fill.var <- "cPovPET"
-    gradient.breaks <- base::seq(0,2.0, by = 0.2)
+    gradient.breaks <- seq(0,2.0, by = 0.2)
     c.low <- "red"
     c.mid <- "green"
     c.high <- "blue"
@@ -359,7 +359,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
                          map.name)
     title.legend <- "Pre vrs LTN Pre (mm)"
     fill.var <- "aDinPre"
-    gradient.breaks <- base::seq(-250,250, by = 50)
+    gradient.breaks <- seq(-250,250, by = 50)
     c.low <- "red"
     c.mid <- "white"
     c.high <- "blue"
@@ -370,8 +370,8 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
   }
   
   # print the titles to make sure they are correct
-  print(base::paste0("Main title: ", title.main))
-  print(base::paste0("Legend title: ", title.legend))
+  print(paste0("Main title: ", title.main))
+  print(paste0("Legend title: ", title.legend))
   
   # map the variable 
   climark.map = ggmap::ggmap(base.map) +
@@ -392,7 +392,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
   
   if (write.file == TRUE){ 
     # write the map to file 
-    map.name.out <- base::paste0(paste(map.name, v, sep = "_"),
+    map.name.out <- paste0(paste(map.name, v, sep = "_"),
                            ".png")
     ggplot2::ggsave(filename = map.name.out, 
            climark.map, 
