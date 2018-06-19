@@ -31,7 +31,7 @@ source("supporting_functions.R")
 credentials.file <- "credentials.txt"
 
 # load the aWhere API credentials file 
-aWhereAPI::load_credentials(credentials.file) 
+aWhereAPI::load_credentials(paste0(working.dir, credentials.file)) 
 
 # latitude, longitude, and name of location used for the chart names 
 # and output file names
@@ -65,7 +65,7 @@ roll.avg <- 30
 # Check if time range is more than 365 days
 duration <- as.Date(days[2]) - as.Date(days[1])
 
-if(duration > 364) { 
+if(duration > 365) { 
   print ("Period too long")
 }
 
@@ -79,6 +79,11 @@ weather.df <- aWhereCharts::generateaWhereDataset(lat = lat, lon = lon,
 # reorder the columns in the data frame
 weather.df <- weather.df %>% 
   select(day, date, latitude, longitude, everything())
+
+# look at the weather data.
+# select the first five columns of the data frame using [,1:5]
+# and show the first 10 rows using the "n" argument
+utils::head(weather.df[,1:5], n = 10)
 
 # write forecast to .csv file 
 utils::write.csv(weather.df, 
@@ -227,22 +232,19 @@ jpeg(paste0(location.name,"_4chart.jpeg"),
 
 # generate the multiplot & write to JPEG
 aWhereCharts::generateMultiplot(eprecip.1, rolling.avg.ppet.2, max.temp.1, pet.1, 
-                  cols = 2, fontsize = 15, 
-                  title = paste0("Current vs LTN at ", 
-                                 location.name," (", lat, ", ", lon, ")", 
-                                 "   eP = ",eP,"mm"))
-
+                                cols = 2, fontsize = 15, 
+                                title = paste0("Current vs LTN at ", 
+                                               location.name," (", lat, ", ", lon, ")", 
+                                               "   eP = ",eP,"mm"))
 # close the current plot object
 dev.off()
 
 
-
-
-
 # Write charts to file ----------------------------------------------------
 
+
 # Maximum temperature
-max.temp.1 # display plot
+#max.temp.1 # display plot
 
 # write the plot to file using the WriteJpeg function, an external R function
 # in the "supporting_functions.R" file.
