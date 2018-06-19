@@ -15,14 +15,17 @@ library(ggplot2)
 library(aWhereAPI)
 library(aWhereCharts)
 
-# load external functions 
-source("supporting_functions.R")
-
 
 # define input paths and variables ----------------------------------------
 
 # working directory - where input files are located and outputs will be saved.
 working.dir <- "~/Documents/aWhere/"
+
+# set the working directory 
+setwd(working.dir) 
+
+# load external functions 
+source("supporting_functions.R")
 
 # filename containing your aWhere credientials (key and secret)
 # to access data from the aWhere API.
@@ -70,9 +73,6 @@ thresh.precip.min <- 0 # [mm]
 
 # processing steps --------------------------------------------------------
 
-# set the working directory 
-base::setwd(working.dir) 
-
 # load the aWhere API credentials file 
 aWhereAPI::load_credentials(credentials.file) 
 
@@ -103,9 +103,9 @@ forecasts.n <- GetForecastSummary(forecast.all, n.day.forecasts,
 # create a data frame for the variable thresholds.
 # access the variable by referencing the column (thresholds$precip)
 # the minimum values is in position 1, maximum value in position 2
-thresholds <- base::as.data.frame(c(thresh.precip.min, thresh.precip.max))
-base::colnames(thresholds) <- "precip"
-base::row.names(thresholds) <- (c("min","max"))
+thresholds <- as.data.frame(c(thresh.precip.min, thresh.precip.max))
+colnames(thresholds) <- "precip"
+row.names(thresholds) <- (c("min","max"))
 
 # create the base map using the parameters defined earlier
 base.map = get_map(location = c(lon = map.lon, 

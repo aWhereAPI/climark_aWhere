@@ -1,97 +1,101 @@
-# install aWhere R package
+# install / load required packages ----------------------------------------
+
+# install aWhere R packages
 #devtools::install_github("aWhereAPI/aWhere-R-Library")
 #devtools::install_github("aWhereAPI/aWhere-R-ChartLibrary")
 
-
-# load required aWhere packages
-library(aWhereAPI)
-library(aWhereCharts)
-#library(plyr) # i don't think we need this, if using dplyr  -VS
-library(tidyverse)  # as.tibble
+# load required packages
+library(tidyverse) 
 library(data.table)
 library(ggmap)
 library(ggplot2)
-library(tidyr) # needed for nest
-library(dplyr)  # for select ^^^^^^^^^^^^^ load dplyr after plyr 
+library(tidyr) 
+library(dplyr)  
 library(ggthemes) 
-library(wicket) # for mapping 
+library(wicket) 
+library(aWhereAPI)
+library(aWhereCharts)
 
-# set working directory
-wd <- "c:/Data/CLIMARK/Project2018" # JC
-wd <- "~/Documents/aWhere/" # VS
+# define input paths and variables ----------------------------------------
+
+# working directory - where input files are located and outputs will be saved
+wd <- "~/Documents/aWhere/" 
 setwd(wd)
 
-# load weather data of your choice
-#weather.file <- "c:/Data/CLIMARK/CLIMARK_data/climark_work/180604_past30.csv" # JC 
+# load external functions 
+source("supporting_functions.R")
 
-weather.dir <- "climark_work_csvs/" # VS - define relative directory and file name
-weather.dir <- "CLIMARK_work/CLIMARK_data/"   # JC
- 
+# specify the weather data directory and file name
+weather.dir <- "climark_work_csvs/" 
 weather.name <- "180609_past30.csv"
-#weather.name <- "180604_past30.csv"
-weather.file <- paste(weather.dir, 
-                     weather.name,
-                     sep="")
 
-climark.data.file <- read.csv(weather.file)
-
-# load template
+# define template data filename
 template.file <- "CLIMARKonlyWardTemplate.csv"
-template.place <- read.csv(template.file) %>% 
+
+# to select subarea(s) of interest, list their names in this vector.
+# for now, these subareas are limited to ward names. To generate a forecast
+# for the entire region instead, set subarea.select to ENTIRE_REGION. 
+subarea.select <- "ENTIRE_REGION"
+#subarea.select <- "KARARE" 
+#subarea.select <- c("KARARE", "GOLBO")
+
+# processing steps ----------------------------------------------------------
+
+# combine the directory and file name
+weather.file <- paste(weather.dir, weather.name, sep="")
+
+# read the weather data 
+weather.df <- read.csv(weather.file)
+
+# read the template data. remove columns that are not necessary.
+template.df <- read.csv(template.file) %>% 
   select( -c(shapewkt, longitude, latitude ))
 
-# pull weather data for the 2 County CLIMARK area with Wards, Constituen 
-get.wards.area <- climark.data.file[which(climark.data.file$locationid %in% 
-                                            template.place$locationid),]
+# filter weather data for only the grid locations within the template data 
+get.wards.area <- weather.df %>% 
+  filter(locationid %in% template.df$locationid)
 
-# dataframe "ag.met.and.wards" has your weather and wards/constituen
-ag.met.and.wards <- merge(get.wards.area, 
-                       template.place, by = "locationid")
+# merge the weather data with and template data (wards/constituen)
+weather.template.df <- merge(get.wards.area, 
+                          template.df, by = "locationid")
 
-# write the output to an excel readable or QGIS ready file with the same name as the input
-ag.met.and.wards.file <- paste("cli-wards",
-                           weather.name,
-                           sep = "_")
-write.csv(ag.met.and.wards, 
-          file = ag.met.and.wards.file)
+# construct output filename for weather + template data
+weather.template.df.file <- paste("weather+template",
+                               weather.name,
+                               sep = "_")
 
-# select a ward or group of wards or CONSTITUENT
-report.ward <- c("KARARE", "MARSABIT CENTRAL", "SAGANTE/JALDESA" )
-report.ward <- "KARARE"
-ward.select <- filter(ag.met.and.wards, 
-                      WARD_NAME %in% report.ward)
+# take a look at the combined data set
+head(weather.template.df %>% 
+       select(locationid, latitude, longitude, CSUMPRE, CPOVRPR, WARD_NAME))
 
-#  write the clip - this becomes a template to get forecast
-write.csv(ward.select, file = paste("ward_clip_",
-                                   weather.name,
-                                   sep = ""))
 
-# User can choose to create these stats either on a specific ward
-# or all of the wards using the variable "ward.select":
-# To use all of the wards in the data set, set ward.select = "ALL"
-# To use a specific ward (such as Karare), set ward.select = "KARARE"
-# To use multiple specific wards, set ward.select = c("KARARE", "MARSABIT CENTRAL", "SAGANTE/JALDESA" )
-ward.select = "ALL"
-ward.select = "KARARE"
-ward.select = c("KARARE", "MARSABIT CENTRAL", "TURBI")
+# write the combined weather and template data to .csv file
+write.csv(weather.template.df, 
+          file = weather.template.df.file)
 
-# print which ward(s) will be processed
-if (ward.select == "ALL"){
-  print("stats calculated for ALL wards")
-  # keep all the wards for the input data to the stats calculation
-  ag.met.and.wards.in <- ag.met.and.wards
+
+# filter the data set for subarea(s) of interest
+# and write this clipped data set to file. It can become a template
+# for a forecast. 
+if (!identical(subarea.select, "ENTIRE_REGION")){ 
   
-  } else{
-    print(paste(paste(ward.select, collapse = " & "),
-                "ward(s) selected",
-                sep = " "))
-    # filter the data to keep only the ward(s) of interest
-    ag.met.and.wards.in <- ag.met.and.wards %>% 
-      filter(WARD_NAME %in% ward.select)
-}
+  weather.template.df <- weather.template.df %>% 
+    dplyr::filter(WARD_NAME %in% subarea.select) 
+  
+  write.csv(weather.template.df, file = paste("weather+template_clip_",
+                                              weather.name,
+                                              sep = "_"))
+  
+} 
 
-# calculate stats for every ward
-subarea.out <- ag.met.and.wards.in %>%
+# take a look at the combined data set after the clip
+head(weather.template.df %>% 
+       select(locationid, latitude, longitude, CSUMPRE, CPOVRPR, WARD_NAME))
+
+
+
+# calculate stats across subareas
+subarea.stats <- weather.template.df %>%
   group_by(WARD_NAME) %>% 
   dplyr::summarise(avg_CSUMPRE = mean(CSUMPRE),
                    max_CSUMPRE = max(CSUMPRE),
@@ -120,9 +124,8 @@ subarea.out <- ag.met.and.wards.in %>%
                    n_grids = n())
 
 # calculate the stats across the entire region as a single entry in the table
-# this serves as a summary across the region (ag.met.and.wards), 
-# in case it's of interest 
-region.out <- ag.met.and.wards %>%
+# this serves as a summary across the entire region
+region.stats <- weather.template.df %>%
   dplyr::summarise(avg_CSUMPRE = mean(CSUMPRE),
                    max_CSUMPRE = max(CSUMPRE),
                    sd_CSUMPRE = sd(CSUMPRE),
@@ -152,11 +155,11 @@ region.out <- ag.met.and.wards %>%
       select(WARD_NAME, n_grids, everything())
 
 # combine the ward-specific stats with the overall region calculation
-stats.out <- rbind(region.out,
-                   subarea.out)
+stats.out <- rbind(region.stats,
+                   subarea.stats)
 
-
-stats.out
+# take a look at the statistics data 
+head(stats.out[,1:5], n = 10)
 
 # write ward statistics to file 
 write.csv(stats.out,
@@ -170,47 +173,72 @@ hist.title <- paste("CLIMARK area",
                     sep = " ")
 
 # Histogram of precip compared to LTN
-generateaWhereHistogram(data = ag.met.and.wards, 
+generateaWhereHistogram(data = weather.template.df, 
                         variable = "CSUMPRE", 
-                        title = hist.title, 
+                        title = paste("Histogram: Precipitation", 
+                                      weather.name, sep = " "), 
                         xlabel = "mm", 
                         compare = TRUE, 
                         compare_var = "LTNSUMP")
 
 # Histogram of minT compared to LTN
-generateaWhereHistogram(data = ag.met.and.wards, 
+generateaWhereHistogram(data = weather.template.df, 
                         variable = "CAvgMinT", 
-                        title = hist.title, 
+                        title = paste("Histogram: Min Temp", 
+                                      weather.name, sep = " "), 
                         xlabel = "Deg C", 
                         compare = TRUE, 
                         compare_var = "LTAvgMnT")
 
 #Histogram of maxT compared to LTN
-generateaWhereHistogram(data = ag.met.and.wards, 
+generateaWhereHistogram(data = weather.template.df, 
                         variable = "CAvgMaxT", 
-                        title = hist.title, 
+                        title = paste("Histogram: Max Temp", 
+                                      weather.name, sep = " "), 
                         xlabel = "Deg C", 
                         compare = TRUE, 
                         compare_var = "LTAvgMxT")
 
+
+# Histogram of P/PET compared to LTN P/PET
+
+# clip the extreme values of CPOVRPR and LTNASPO and #
+# place these clipped values in new columns, "ctemp" and "LTNtemp"
+weather.template.df$ctemp <- ClipValues(weather.template.df$CPOVRPR, 
+                                        max.thresh = 2)
+weather.template.df$LTNtemp <- ClipValues(weather.template.df$LTNASPO, 
+                                        max.thresh = 2)
+
+# use this separate histogram function for now to plot P/PET
+source("function_generateaWhereHistogramPET.R")
+generateaWhereHistogramPET(data = weather.template.df, 
+                           "ctemp", 
+                           title = paste("Histogram: P / PET", 
+                                         weather.name, sep = " "), 
+                           xlabel = "P/PET", 
+                           compare = TRUE, 
+                           compare_var = "LTNtemp")
+
+
+
+
+
+
+
+
+
+
+
+
 # Histogram of P/PET compared to LTN P/PET
 # on subsetdata, convert to datatable, make 2 new col, histo on 
 # those cols for P/PET vs LTN P/PET
-dt1 <- as.data.table(ag.met.and.wards) # copy ag.met.and.wards into data table
-dt1[,ctemp := ag.met.and.wards$CPOVRPR] # make new column called "ctemp"
+dt1 <- as.data.table(weather.template.df) # copy weather.template.df into data table
+dt1[,ctemp := weather.template.df$CPOVRPR] # make new column called "ctemp"
 dt1[ctemp > 2, ctemp := 2] # subset
-dt1[,LTNtemp := ag.met.and.wards$LTNASPO] # make new column called "LTNtemp"
+dt1[,LTNtemp := weather.template.df$LTNASPO] # make new column called "LTNtemp"
 dt1[LTNtemp > 2, LTNtemp := 2] # subset
 df1 <- as.data.frame(dt1)
-
-# Need to correct the "seq" call in this function
-# so it doesn't throw an error! 
-# generateaWhereHistogram(data = df1, 
-#                         "ctemp", 
-#                         title = hist.title, 
-#                         xlabel = "P/PET", 
-#                         compare = TRUE, 
-#                         compare_var = "LTNtemp")
 
 # use this separate function just for now 
 source("function_generateaWhereHistogramPET.R")
@@ -226,29 +254,29 @@ generateaWhereHistogramPET(data = df1,
 ######################## PRECIP
 # Create a vector with counts of # grids for each hist bin 
 bin.size <- 5 # increment size [units of mm for the precip data]
-bins <- seq(from = min(ag.met.and.wards$CSUMPRE),
-            to = max(ag.met.and.wards$CSUMPRE) + bin.size,
+bins <- seq(from = min(weather.template.df$CSUMPRE),
+            to = max(weather.template.df$CSUMPRE) + bin.size,
             by = bin.size)
 
 # create a column to populate with the numeric range per bin 
 bin_range <- vector(mode="character", length(bins))
 
 # add a column for which bin/ bin range each grid falls into
-ag.met.and.wards$bin <- NA
-ag.met.and.wards$bin_range <- NA
+weather.template.df$bin <- NA
+weather.template.df$bin_range <- NA
 
 # loop through each bin and populate the appropriate values
 for(b in 1:(length(bins)-1)){
   
   # indices of entries that fall in the current bin
-  idx <- ag.met.and.wards$CSUMPRE >= bins[b] & 
-                   ag.met.and.wards$CSUMPRE < bins[b+1]
+  idx <- weather.template.df$CSUMPRE >= bins[b] & 
+                   weather.template.df$CSUMPRE < bins[b+1]
   
   # add the bin number to each row
-  ag.met.and.wards$bin[idx] <- b
+  weather.template.df$bin[idx] <- b
   
   # add the bin range to each row 
-  ag.met.and.wards$bin_range[idx] <- paste(as.character(bins[b]),
+  weather.template.df$bin_range[idx] <- paste(as.character(bins[b]),
                                       " - ",
                                       as.character(bins[b+1]),
                                       sep="")
@@ -258,16 +286,16 @@ for(b in 1:(length(bins)-1)){
 # percentage of grids belonging to bin.
 # once population and yield data are incorporated,
 # we can also add columns for those metrics 
-ag.met.and.wards <- ag.met.and.wards %>% 
+weather.template.df <- weather.template.df %>% 
   group_by(bin) %>%
   mutate(grid_count = n(),
-         grid_percent = 100 * n() / nrow(ag.met.and.wards))
+         grid_percent = 100 * n() / nrow(weather.template.df))
   
 
 # create nested data frame with all observations per bin.
 # display the bin number, grid count, percent of total grids
 # within each bin. 
-ag.met.and.wards.nested <- ag.met.and.wards %>% 
+weather.template.df.nested <- weather.template.df %>% 
   group_by(bin, 
            bin_range,
            grid_count, 
@@ -275,11 +303,11 @@ ag.met.and.wards.nested <- ag.met.and.wards %>%
   nest() %>% 
   arrange(bin)
 
-ag.met.and.wards.nested
+weather.template.df.nested
 
 # write to.CSV - use "select" to remove the "data" column, 
 # and write the remaining columns of data to a .csv file 
-ag.met.and.wards.nested %>% 
+weather.template.df.nested %>% 
   select(-data) %>% 
   write.csv(file = paste("precip_summary_table",
                          weather.name,
@@ -302,21 +330,21 @@ bins <- c(bins, Inf)
 bin_range <- vector(mode="character", length(bins))
 
 # add a column for which bin the grid falls into
-ag.met.and.wards$bin <- NA
-ag.met.and.wards$bin_range <- NA
+weather.template.df$bin <- NA
+weather.template.df$bin_range <- NA
 
 # loop through each bin and populate the appropriate values
 for(b in 1:(length(bins)-1)){
   
   # indices of entries that fall in the current bin
-  idx <- ag.met.and.wards$CPOVRPR >= bins[b] & 
-    ag.met.and.wards$CPOVRPR < bins[b+1]           #ag.met.and.wards$CSUMPRE < bins[b+1]
+  idx <- weather.template.df$CPOVRPR >= bins[b] & 
+    weather.template.df$CPOVRPR < bins[b+1]           #weather.template.df$CSUMPRE < bins[b+1]
   
   # add the bin number to each row
-  ag.met.and.wards$bin[idx] <- b
+  weather.template.df$bin[idx] <- b
   
   # add the bin range to each row 
-  ag.met.and.wards$bin_range[idx] <- paste(as.character(bins[b]),
+  weather.template.df$bin_range[idx] <- paste(as.character(bins[b]),
                                            " - ",
                                            as.character(bins[b+1]),
                                            sep="")
@@ -326,16 +354,16 @@ for(b in 1:(length(bins)-1)){
 # percentage of grids belonging to bin.
 # once population and yield data are incorporated,
 # we can also add columns for those metrics 
-ag.met.and.wards <- ag.met.and.wards %>% 
+weather.template.df <- weather.template.df %>% 
   group_by(bin) %>%
   mutate(grid_count = n(),
-         grid_percent = 100 * n() / nrow(ag.met.and.wards))
+         grid_percent = 100 * n() / nrow(weather.template.df))
 
 
 # create nested data frame with all observations per bin.
 # display the bin number, grid count, percent of total grids
 # within each bin. 
-ag.met.and.wards.nested <- ag.met.and.wards %>% 
+weather.template.df.nested <- weather.template.df %>% 
   group_by(bin, 
            bin_range,
            grid_count, 
@@ -343,11 +371,11 @@ ag.met.and.wards.nested <- ag.met.and.wards %>%
   nest() %>% 
   arrange(bin)
 
-ag.met.and.wards.nested
+weather.template.df.nested
 
 # write to.CSV - use "select" to remove the "data" column, 
 # and write the remaining columns of data to a .csv file 
-ag.met.and.wards.nested %>% 
+weather.template.df.nested %>% 
   select(-data) %>% 
   write.csv(file = paste("P-PET_summary_table",
                          weather.name,
@@ -357,13 +385,13 @@ ag.met.and.wards.nested %>%
 
 # To create a narrative about the percentage of a ward receiving 
 # a given precip level, we can use the dplyr::filter command to 
-# subset the larger ag.met.and.wards data frame, and then apply all of 
+# subset the larger weather.template.df data frame, and then apply all of 
 # the steps previously used to get overall statistics. I'd like to make 
 # it into a function, but for now I'll paste that code below here. 
 ward.select = "TURBI"
 ward.select = "LOIYANGALANI"
 
-ward.df <- ag.met.and.wards %>% 
+ward.df <- weather.template.df %>% 
   filter(WARD_NAME %in% ward.select) 
 ward.df$bin <- NA
 ward.df$bin_range <- NA
@@ -426,27 +454,27 @@ gg.map
 # Adjust the CLIMARK data extreme values
 
 # convert CLIMARK data to data.table
-dt2 <- as.data.table(ag.met.and.wards)
+dt2 <- as.data.table(weather.template.df)
 
 # copy the CPOVRPR column to new column, cPovPET
-dt2[,cPovPET := ag.met.and.wards$CPOVRPR]
+dt2[,cPovPET := weather.template.df$CPOVRPR]
 # for all P/PET values greater than 2, set equal to 2
 dt2[cPovPET > 2.00, cPovPET := 2.00]
 
 # copy the LTNASPO column to new column, cLTNPPET
-dt2[,cLTNPPET := ag.met.and.wards$LTNASPO]
+dt2[,cLTNPPET := weather.template.df$LTNASPO]
 # for all values > 2.49, set equal to 2.5
 dt2[cLTNPPET > 2.49, cLTNPPET := 2.5]
 
 # copy the CSUMPRE column to a new column, aPre
-dt2[,aPre := ag.met.and.wards$CSUMPRE]
+dt2[,aPre := weather.template.df$CSUMPRE]
 # clip all values >299 to 300
 dt2[aPre > 299, aPre := 300]
 
-dt2[,aLTNPRE := ag.met.and.wards$LTNSUMP]
+dt2[,aLTNPRE := weather.template.df$LTNSUMP]
 dt2[aLTNPRE > 399, aLTNPRE := 400]
 
-dt2[,aDinPre := ag.met.and.wards$DFLTSUM]
+dt2[,aDinPre := weather.template.df$DFLTSUM]
 dt2[aDinPre > 250, aDinPre := 250]
 dt2[aDinPre < -250, aDinPre := -250]
 

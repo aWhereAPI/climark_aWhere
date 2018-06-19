@@ -16,15 +16,15 @@ library(zoo)
 library(aWhereCharts)
 library(curl)
 
-# load external R functions in local file
-source("supporting_functions.R")
-
 # define input paths and variables ----------------------------------------
 
 # working directory - where input files are located and outputs will be saved.
 working.dir <- "c:/Data/CLIMARK/Project2018"
 working.dir <- "~/Documents/aWhere/"
 setwd(working.dir)
+
+# load external R functions in local file
+source("supporting_functions.R")
 
 # filename containing your aWhere credientials (key and secret),
 # a text file where line 1 is the Consumer Key,
@@ -82,9 +82,9 @@ weather.df <- aWhereCharts::generateaWhereDataset(lat = lat, lon = lon,
 # write forecast to .csv file 
 utils::write.csv(weather.df, 
                  file = paste(location.name, 
-                              base::paste(lat, lon, sep="_"),
-                              base::paste(days, collapse="_"),
-                              base::paste(years, collapse="_"),
+                              paste(lat, lon, sep="_"),
+                              paste(days, collapse="_"),
+                              paste(years, collapse="_"),
                               ".csv", sep="_"))
 
 # generate charts ---------------------------------------------------------
