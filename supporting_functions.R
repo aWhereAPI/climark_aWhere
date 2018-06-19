@@ -394,15 +394,40 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
 # WriteJpeg ---------------------------------------------------------------
 
 WriteJpeg <- function(plt, plt.title, w=10, h=6, u="in", r=500){
+  # Opens the jpeg graphics device with the specified settings
+  # and saves the plot to an image file (.jpeg)
+  #
+  # Args
+  #   plt
+  #     (ggplot plot object) plot to write to file
+  #
+  #   plt.title
+  #     (character string) title of the plot, used to name the output file
+  #
+  #   w 
+  #     (integer, optional with default value of 10) width of graphics device
+  #
+  #   h
+  #     (integer, optional with default value of 6) height of graphics device 
+  #
+  #   u
+  #     (character, optional with default value of "in") the units in which 
+  #     height and weight are given. Can be "in", "px", "cm", or "mm".
+  #
+  #   r
+  #     (integer, optional with default value of 500) nominal resolution in ppi
   
-  # write plot to image file
+  # set graphics device
   jpeg(paste0(plt.title, ".jpeg"), 
        width = w, 
        height = h, 
        units = u, 
        res = r)
   
+  # write plot to image file
   print(plt)
+  
+  # close graphics device 
   dev.off()
   
 }

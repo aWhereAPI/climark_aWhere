@@ -87,7 +87,7 @@ utils::write.csv(weather.df,
 
 
 # Maximum temperature with standard deviation ---------------------------------
-max.temp.1.title <- paste0("Maximum Temp w Std Dev", location.name,
+max.temp.1.title <- paste0("Maximum Temp w StdDev ", location.name,
                            " (", lat, ", ", lon, ")")
 
 max.temp.1 <- aWhereCharts::generateaWhereStdDevChart(data = weather.df, 
@@ -101,7 +101,7 @@ WriteJpeg(plt = max.temp.1, plt.title = max.temp.1.title)
 
 
 # Minimum temperature with standard deviation ---------------------------------
-min.temp.1.title <- paste0("Minimum Temp w Std Dev ", location.name,
+min.temp.1.title <- paste0("Minimum Temp w StdDev ", location.name,
                            " (", lat, ", ", lon, ")")
 
 min.temp.1 <- aWhereCharts::generateaWhereStdDevChart(weather.df, 
@@ -116,7 +116,7 @@ WriteJpeg(plt = min.temp.1, plt.title = min.temp.1.title)
 
 
 # Potential evapotranspiration (PET) --------------------------------------
-pet.1.title <- paste0("PET w Std Dev", location.name,
+pet.1.title <- paste0("PET w StdDev ", location.name,
                       " (", lat, ", ", lon, ")")
 
 pet.1 <- aWhereCharts::generateaWhereStdDevChart(weather.df, 
@@ -131,7 +131,7 @@ WriteJpeg(plt = pet.1, plt.title = pet.1.title)
 
 
 # Daily precipitation with standard deviations  ---------------------------
-precip.1.title <- paste0("Daily Precipitation w Std Dev", location.name,
+precip.1.title <- paste0("Daily Precipitation w StdDev ", location.name,
                          " (", lat, ", ", lon, ")")
 
 precip.1 <- aWhereCharts::generateaWhereStdDevChart(weather.df, 
@@ -160,7 +160,7 @@ WriteJpeg(plt = precip2, plt.title = precip.2.title)
 
 
 # Accumulated Precipitation with StdDev but no Effective Precipitation --------
-no.eprecip.1.title <- paste0("Accumulated Precipitation w Std Dev", location.name,
+no.eprecip.1.title <- paste0("Accumulated Precipitation w StdDev ", location.name,
                              " (", lat, ", ", lon, ")")
 no.eprecip.1 <- aWhereCharts::generateaWhereStdDevChart(weather.df, 
                                                         "accumulatedPrecipitation", 
@@ -207,7 +207,7 @@ WriteJpeg(plt = acc.precip.2, plt.title = acc.precip.2.title)
 
 # Accumulated PET ---------------------------------------------------------
 
-acc.pet.1.title <- paste0("Accumulated PET w Std Dev", location.name, " (", 
+acc.pet.1.title <- paste0("Accumulated PET w StdDev ", location.name, " (", 
                           lat, ", ", lon, ")")
 
 acc.pet.1 <- aWhereCharts::generateaWhereStdDevChart(weather.df, 
@@ -228,7 +228,7 @@ ppet.2.title <- paste0("P/PET ", location.name, " (",
 
 ppet.2 <- aWhereCharts::generateaWhereChart(weather.df, 
                                             "ppet", 
-                                            "P/PET")
+                                            ppet.2.title)
 # display plot
 ppet.2
 
@@ -294,7 +294,7 @@ dev.off()
 
 
 
-# Plot: Effective Precipitation with StDev --------------------------------
+# Incorporate into above, then delete --------------------------------
 
 cheprecip1 <- generateaWhereStdDevChart(weather.df, 
                                         "accumulatedPrecipitation",
