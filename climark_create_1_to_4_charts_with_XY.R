@@ -42,14 +42,13 @@ location.name <- paste("Shamba1")
 # the starting value in position 1 and the ending value in position 2. 
 years <- c(2010, 2017)
 
-# start day can "today", "yesterday", "tomorrow", or "YYYY-MM-DD". 
-# end day is calculated using the largest value in n.day.forecasts vector.
-# to specify a different end day, add the "ending.day" argument
-# to the GetDays function with a specific end date, "YYYY-MM-DD". 
-day.start <- "yesterday"
-n.day.forecast <- 7
-days <- GetDays(starting.day = day.start, 
-                forecast.days = n.day.forecast)
+#starting and ending days with format "YYYY-MM-DD"
+day.start <- "2018-03-01"
+day.end <- "2018-03-08" # specific date
+day.end <- as.character(Sys.Date() + 7) # today plus n
+
+# combine the days into a single vector 
+days <- c(day.start, day.end)
 
 # effective precip amount for consistency across plots
 eP <- 30    
