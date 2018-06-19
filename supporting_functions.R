@@ -61,6 +61,7 @@ GetDays <- function(starting.day, forecast.days, ending.day=FALSE){
   
   return(days)
   
+  
 }
 
 

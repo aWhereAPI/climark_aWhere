@@ -24,6 +24,7 @@ source("supporting_functions.R")
 # working directory - where input files are located and outputs will be saved.
 working.dir <- "c:/Data/CLIMARK/Project2018"
 working.dir <- "~/Documents/aWhere/"
+setwd(working.dir)
 
 # filename containing your aWhere credientials (key and secret),
 # a text file where line 1 is the Consumer Key,
@@ -31,10 +32,11 @@ working.dir <- "~/Documents/aWhere/"
 credentials.file <- "c:/2018 work/awhere/Projects/R Working Directory/JC_credentials.txt"
 credentials.file <- "credentials.txt"
 
-# Location and name to produce charts for
+# latitude, longitude, and name of location used for the chart names 
+# and output file names
 lat <- 3.2
 lon <- 37.0
-location.name <- paste("Shamba1") # base filename for outputs. 
+location.name <- paste("Shamba1") 
 
 # starting and ending years and days for the time series. each is a vector with 
 # the starting value in position 1 and the ending value in position 2. 
@@ -67,6 +69,9 @@ if(duration > 364) {
   print ("Period too long")
 }
 
+# load the aWhere API credentials file 
+aWhereAPI::load_credentials(credentials.file) 
+
 # pull the datasets    
 weather.df <- aWhereCharts::generateaWhereDataset(lat = lat, lon = lon, 
                                                   day_start = days[1], 
@@ -84,19 +89,34 @@ utils::write.csv(weather.df,
 
 # generate charts ---------------------------------------------------------
 
+# Within the aWhereCharts package, there are two functions used here to create
+# time series charts. 
+# (1) generateaWhereChart - makes line plots comparing the current and long-term 
+# normals for each variable. 
+# (2) generateaWhereStdDevChart - plots aWhere weather data with one standard 
+# deviation's shading above and below the long-term normalline. This function 
+# is meant to help users understand whether the current weather conditions are
+# significantly outside the norm. 
 
+# plots with standard deviation are named with "1" at the end of the variable,
+# and those without standard deviation are named with "2". 
 
 # Maximum temperature with standard deviation ---------------------------------
+
+# contruct the title for this chart using the variable name, location name,
+# and the latitude/longitude.
 max.temp.1.title <- paste0("Maximum Temp w StdDev ", location.name,
                            " (", lat, ", ", lon, ")")
 
+# generate the plot 
 max.temp.1 <- aWhereCharts::generateaWhereStdDevChart(data = weather.df, 
                                                       variable = "maxTemp", 
                                                       title = max.temp.1.title)
 # display plot
 max.temp.1 
 
-# write to file
+# write the plot to file using the WriteJpeg function, an external R function
+# in the "supporting_functions.R" file.
 WriteJpeg(plt = max.temp.1, plt.title = max.temp.1.title)
 
 
@@ -115,7 +135,7 @@ min.temp.1
 WriteJpeg(plt = min.temp.1, plt.title = min.temp.1.title)
 
 
-# Potential evapotranspiration (PET) --------------------------------------
+# Potential evapotranspiration (PET) with standard deviation -----------------
 pet.1.title <- paste0("PET w StdDev ", location.name,
                       " (", lat, ", ", lon, ")")
 
@@ -130,7 +150,7 @@ pet.1
 WriteJpeg(plt = pet.1, plt.title = pet.1.title)
 
 
-# Daily precipitation with standard deviations  ---------------------------
+# Daily precipitation with standard deviation  ---------------------------
 precip.1.title <- paste0("Daily Precipitation w StdDev ", location.name,
                          " (", lat, ", ", lon, ")")
 
@@ -144,7 +164,7 @@ precip.1
 WriteJpeg(plt = precip.1 , plt.title = precip.1.title)
 
 
-# Daily precipitation without standard deviations  ---------------------------
+# Daily precipitation without standard deviation  ---------------------------
 precip.2.title <- paste0("Daily Precipitation ", location.name,
                          " (", lat, ", ", lon, ")")
 
@@ -156,7 +176,7 @@ precip.2 <- aWhereCharts::generateaWhereChart(weather.df,
 precip.2 
 
 # write to file
-WriteJpeg(plt = precip2, plt.title = precip.2.title)
+WriteJpeg(plt = precip.2, plt.title = precip.2.title)
 
 
 # Accumulated Precipitation with StdDev but no Effective Precipitation --------
@@ -197,7 +217,6 @@ acc.precip.2.title <- paste0("Accumulated Precipitation ", location.name, " (",
 acc.precip.2 <- aWhereCharts::generateaWhereChart(weather.df, 
                                                   "accumulatedPrecipitation", 
                                                   acc.precip.2.title)
-
 # display plot
 acc.precip.2
 
@@ -223,7 +242,7 @@ WriteJpeg(plt = acc.pet.1, plt.title = acc.pet.1.title)
 # P/PET -------------------------------------------------------------------
 # ppet rarely is interpretable on a daily chart 
 
-ppet.2.title <- paste0("P/PET ", location.name, " (", 
+ppet.2.title <- paste0("P PET ", location.name, " (", 
                        lat, ", ", lon, ")")
 
 ppet.2 <- aWhereCharts::generateaWhereChart(weather.df, 
@@ -239,7 +258,7 @@ WriteJpeg(plt = ppet.2, plt.title = ppet.2.title)
 # 30 day rolling average eP/PET and P/PET ---------------------------------
 
 # no eprecip/PET shows up if all rainfall events are less than the e_threshold
-rolling.avg.ppet.2.title <- "30 day rolling avg eP/PET and P/PET "
+rolling.avg.ppet.2.title <- "30 day rolling avg eP PET and P PET "
 
 rolling.avg.ppet.2 <- aWhereCharts::generateaWhereChart(weather.df, 
                                                         "rollingavgppet",
@@ -262,12 +281,12 @@ WriteJpeg(plt = rolling.avg.ppet.2, plt.title = rolling.avg.ppet.2.title)
 # acc.precip.2, acc.pet.1, ppet.2, rolling.avg.ppet.2
 
 # set the graphics device parameters to write a .JPEG
-jpeg(paste0(location.name,"4chart.jpeg", sep = "_"), 
+jpeg(paste0(location.name,"_4chart.jpeg"), 
      width = 12, height = 6, 
      units = 'in', res = 500)
 
-# generate the multiplot 
-generateMultiplot(eprecip1, rollingavgppet2, maxtemp1, pet1, 
+# generate the multiplot & write to JPEG
+aWhereCharts::generateMultiplot(eprecip.1, rolling.avg.ppet.2, max.temp.1, pet.1, 
                   cols = 2, fontsize = 15, 
                   title = paste0("Current vs LTN at ", 
                                  location.name," (", lat, ", ", lon, ")", 
@@ -275,114 +294,3 @@ generateMultiplot(eprecip1, rollingavgppet2, maxtemp1, pet1,
 
 # close the current plot object
 dev.off()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Incorporate into above, then delete --------------------------------
-
-cheprecip1 <- generateaWhereStdDevChart(weather.df, 
-                                        "accumulatedPrecipitation",
-                                        title = paste("Precipitation and Effective Precipitation, Accumulated,", 
-                                                      placename," (", lat, ", ", lon, ")"),
-                                        e_precip = TRUE, 
-                                        e_threshold = eP)
-jpeg(paste0(placename,  
-            "Accprecip.jpeg"), 
-     width = 10, 
-     height = 6, 
-     units = 'in', 
-     res = 500)
-
-print(cheprecip1)
-dev.off() 
-
-
-# Plot: Rolling average P/PET  --------------------------------------------
-
-chrollingavgppet2 <- generateaWhereChart(weather.df, 
-                                         "rollingavgppet",  
-                                         title = paste("30 day rolling avg eP/PET and P/PET,",
-                                                       placename," (", lat, ", ", lon, ")"),
-                                         e_precip = TRUE, 
-                                         e_threshold = eP, 
-                                         rolling_window = 30)
-
-jpeg(paste0(placename, 
-            "rollingavgppet.jpeg"), 
-     width = 10, 
-     height = 6, 
-     units = 'in', 
-     res = 500)
-
-print(chrollingavgppet2)
-dev.off()
-
-
-# Maximum Temperature with StDev ------------------------------------------
-
-chmaxtemp1 <- generateaWhereStdDevChart(weather.df, 
-                                        "maxTemp",
-                                        title = paste("Maximum Temperature,", 
-                                                      placename," (", lat, ", ", lon, ")"))
-
-jpeg(paste0(placename, 
-            "MaxTemp.jpeg"), 
-     width = 10, 
-     height = 6, 
-     units = 'in', 
-     res = 500)
-
-print(chmaxtemp1)
-dev.off()
-
-
-# Plot: Minimum Temperature with StdDev ------------------------------------
-
-chmintemp1 <- generateaWhereStdDevChart(weather.df, 
-                                        "minTemp",
-                                        title = paste("Minimum Temperature,", 
-                                                      placename," (", lat, ", ", lon, ")"))  
-
-jpeg(paste0(placename, 
-            "MinTemp.jpeg"), 
-     width = 10, 
-     height = 6, 
-     units = 'in', 
-     res = 500)
-
-print(chmintemp1)
-dev.off()
-
-
-# Plot: PET with StdDev ---------------------------------------------------
-
-chpet1 <- generateaWhereStdDevChart(weather.df, 
-                                    "pet",
-                                    title = paste("Potential EvapoTranspiration,", 
-                                                  placename," (", lat, ", ", lon, ")"))    
-
-jpeg(paste0(placename, "PET.jpeg"), 
-     width = 10, 
-     height = 6, 
-     units = 'in', 
-     res = 500)
-
-print(chpet1)
-dev.off()
-
