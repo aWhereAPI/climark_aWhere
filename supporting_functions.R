@@ -1,3 +1,6 @@
+
+# GetDays -----------------------------------------------------------------
+
 GetDays <- function(starting.day, forecast.days, ending.day=FALSE){
   # Generate the starting and ending days for a forecast. 
   #
@@ -66,6 +69,7 @@ GetDays <- function(starting.day, forecast.days, ending.day=FALSE){
 
 
 
+# GetForecastData ---------------------------------------------------------
 
 GetForecastData <- function(template.place, days, years, 
                         write.file = FALSE, filename.out = "forecast"){
@@ -160,6 +164,8 @@ GetForecastData <- function(template.place, days, years,
 
 
 
+# GetForecastSummary ------------------------------------------------------
+
 GetForecastSummary <- function(forecast.all, n.day.forecasts,
                                template.place){
   # Sum the n-day forecast values at every location.
@@ -216,6 +222,8 @@ GetForecastSummary <- function(forecast.all, n.day.forecasts,
 
 
 
+# ClipValues --------------------------------------------------------------
+
 
 ClipValues <- function(values, max.thresh, min.thresh = 0){
   # Clips the extremely large or small values of an input vector. 
@@ -242,6 +250,8 @@ ClipValues <- function(values, max.thresh, min.thresh = 0){
     
 }
 
+
+# MapForecast -------------------------------------------------------------
 
 MapForecast <- function(forecasts.n, base.map, thresholds){
   
@@ -287,6 +297,10 @@ MapForecast <- function(forecasts.n, base.map, thresholds){
   return(forecast.maps)
   
 }
+
+
+
+# MakeMap -----------------------------------------------------------------
 
 MakeMap <- function(df, v = "pre", base.map, map.name,
                     write.file = FALSE){
