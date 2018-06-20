@@ -375,6 +375,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
   # print the titles to make sure they are correct
   print(paste0("Main title: ", title.main))
   print(paste0("Legend title: ", title.legend))
+  print(paste0("Fill variable: ", fill.var))
   
   # map the variable 
   climark.map = ggmap::ggmap(base.map) +

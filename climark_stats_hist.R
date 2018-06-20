@@ -327,9 +327,18 @@ weather.template.nested.precip <- weather.template.df %>%
   tidyr::nest() %>% 
   dplyr::arrange(bin.precip)
 
-# take a look at the nested data
-# this is essentially the histogram in tabular form
-head(weather.template.nested.precip %>% dplyr::select(-data))
+# take a look at the nested data. 
+# this is essentially the histogram in tabular form.
+# get the nested data out of the way,
+grids.per.precip.level <- weather.template.nested.precip %>% 
+  dplyr::select(-data)
+
+# and use the "head" function to take a look at the first 6 rows
+head(grids.per.precip.level)
+
+# write number of grids per precip level to .csv
+write.csv(grids.per.precip.level,
+          "grids_per_precip_level.csv")
 
 
 # P/PET table summary ---------------------------------------------------
@@ -373,9 +382,17 @@ weather.template.nested.ppet <- weather.template.df %>%
   dplyr::arrange(bin.ppet)
 
 # take a look at the nested data
-# this is essentially the P/PET histogram in tabular form
-head(weather.template.nested.ppet %>% dplyr::select(-data))
+# this is essentially the P/PET histogram in tabular form.
+# get the nested data out of the way,
+grids.per.ppet.level <- weather.template.nested.ppet %>% 
+                           dplyr::select(-data)
 
+# and use the "head" function to take a look at the first 6 rows
+head(grids.per.ppet.level)
+
+# write number of grids per ppet level to .csv
+write.csv(grids.per.ppet.level,
+          "grids_per_ppet_level.csv")
 
 
 

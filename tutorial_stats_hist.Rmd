@@ -31,10 +31,13 @@ Load the R packages that contain functions used in this script.
 
 ```{r load_packages}
 library(dplyr)
+library(tidyverse) 
 library(tibble)
 library(tidyr)
 library(ggplot2)
 library(ggmap)
+library(ggthemes)
+library(wicket) 
 library(aWhereAPI)
 library(aWhereCharts)
 ```
@@ -436,9 +439,23 @@ weather.template.nested.precip <- weather.template.df %>%
   dplyr::arrange(bin.precip)
 
 # take a look at the nested data. 
-# this is essentially the histogram in tabular form
-head(weather.template.nested.precip %>% dplyr::select(-data))
+# this is essentially the histogram in tabular form.
+# get the nested data out of the way,
+grids.per.precip.level <- weather.template.nested.precip %>% 
+                                                 dplyr::select(-data)
+
+# and use the "head" function to take a look at the first 6 rows
+head(grids.per.precip.level)
 ```
+
+Write the grid count per precip level summary to a .csv file. 
+
+```{r}
+# write precip number of grids per precip level to .csv
+write.csv(grids.per.precip.level,
+          "grids_per_precip_level.csv")
+```
+
 
 We can perform the same steps to generate a tabular summary for the P/PET variable: 
 
@@ -486,9 +503,21 @@ weather.template.nested.ppet <- weather.template.df %>%
 
 ```{r results=TRUE}
 # take a look at the nested data
-# this is essentially the P/PET histogram in tabular form
-head(weather.template.nested.ppet %>% dplyr::select(-data))
+# this is essentially the P/PET histogram in tabular form.
+# get the nested data out of the way,
+grids.per.ppet.level <- weather.template.nested.ppet %>% 
+                           dplyr::select(-data)
+
+# and use the "head" function to take a look at the first 6 rows
+head(grids.per.ppet.level)
 ```
+
+```{r}
+# write number of grids per ppet level to .csv
+write.csv(grids.per.ppet.level,
+          "grids_per_ppet_level.csv")
+```
+
 
 # Ward narrative 
 
