@@ -1,5 +1,5 @@
 ---
-title: 'CLIMARK Tutorial: Statistics and Histograms'
+title: 'CLIMARK Tutorial: Histograms, Statistics and Maps'
 author: "Victoria Scholl"
 date: "6/19/2018"
 output: pdf_document
@@ -13,6 +13,8 @@ knitr::opts_chunk$set(echo=TRUE,
 ```
 
 # Introduction
+
+How to weather data distributions from the aWhere API compare for current and long-term normal observations?
 
 # Code
 
