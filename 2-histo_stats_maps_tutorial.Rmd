@@ -61,6 +61,7 @@ Use the *source* function to load R functions that are located on your local mac
 ```{r load.functions}
 # load external R functions in local file
 source("0-supporting_functions.R")
+source("0-function_generateaWhereHistogramPET.R") #  to plot P/PET
 ```
 
 Specify the weather data directory and file name. 

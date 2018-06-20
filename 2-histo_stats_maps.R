@@ -24,6 +24,7 @@ setwd(working.dir)
 
 # load external functions 
 source("0-supporting_functions.R")
+source("0-function_generateaWhereHistogramPET.R") #  to plot P/PET
 
 # specify the weather data directory and file name
 weather.dir <- "climark_work_csvs/" 
@@ -256,8 +257,6 @@ weather.template.df$ctemp <- ClipValues(weather.template.df$CPOVRPR,
 weather.template.df$LTNtemp <- ClipValues(weather.template.df$LTNASPO, 
                                         max.thresh = 2)
 
-# use this separate histogram function for now to plot P/PET
-source("function_generateaWhereHistogramPET.R")
 
 # construct a descriptive title
 hist.title <- paste("Histogram PPET", 
