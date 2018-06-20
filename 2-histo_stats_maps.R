@@ -1,8 +1,9 @@
 # install / load required packages ----------------------------------------
 
 # install aWhere R packages
+#library(devtools)
 #devtools::install_github("aWhereAPI/aWhere-R-Library")
-#devtools::install_github("aWhereAPI/aWhere-R-ChartLibrary")
+#devtools::install_github("aWhereAPI/aWhere-R-Charts")
 
 # load required packages
 library(tidyverse) 

@@ -3,18 +3,20 @@
 # install / load required packages ----------------------------------------
 
 # install aWhere R packages
+#library(devtools)
 #devtools::install_github("aWhereAPI/aWhere-R-Library")
-#devtools::install_github("aWhereAPI/aWhere-R-ChartLibrary")
+#devtools::install_github("aWhereAPI/aWhere-R-Charts")
+
 
 # load required packages 
 library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(ggthemes)
-library(aWhereAPI)
-library(zoo)
-library(aWhereCharts)
 library(curl)
+library(zoo)
+library(aWhereAPI)
+library(aWhereCharts)
 
 # define input paths and variables ----------------------------------------
 
