@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo=TRUE,
 
 # Introduction
 
-This tutorial pulls weather data from the aWhere API for a specific timespan and region. 
+This tutorial pulls forecasted weather data from the aWhere API for a specific timespan and area of interest. 
 
 # Code 
 
@@ -51,9 +51,6 @@ working.dir <- "~/Documents/aWhere/"
 
 # set the working directory 
 setwd(working.dir) 
-
-# set the working directory for R Markdown too
-knitr::opts_knit$set(root.dir = working.dir)
 ```
 
 Use the *source* function to load R functions that are located on your local machine. For this tutorial, there are a few functions within the *0-supporting_functions.R* file. There is a zero in the beginning of this filename so it appears at the top when files are sorted alphabetically. 
@@ -76,16 +73,10 @@ aWhereAPI::load_credentials(paste0(working.dir, credentials.file))
 What are the starting and ending days that define the duration of the forecast? Also specify the range of years over which to calculate the long-term normal values. 
 
 ```{r}
-# starting and ending days must have this format: "YYYY-MM-DD"
-day.start <- as.character(Sys.Date()) # today
-day.start <- "2018-06-19" # specific date
-
-day.end <- "2018-06-24" # specific date
-day.end <- as.character(Sys.Date() + 7) # today plus 7
-day.end <- as.character(as.Date(day.start) + 7) # start date plus 7
-
-# combine the days into a single vector 
-days <- c(day.start, day.end)
+# The forecast is limited to a maximum number of 7 days from today. 
+# starting day can be "today" or "tomorrow"
+days <- GetDays(starting.day = "yesterday",
+                forecast.days = 7)
 
 
 # "years"" is a vector with the starting year in position 1 and the ending
@@ -108,12 +99,42 @@ Specify the template data filename containing the geographic location data.
 template.file <- "CLIMARKonlyWardTemplate.csv"
 ``` 
 
-To select subarea(s) of interest, list their names in this vector. For now, these subareas are limited to ward names. To generate a forecast for the entire region instead, set *subarea.select* to "ENTIRE_REGION". 
+Here is a list of all wards in the CLIMARK area: 
+
+```{r results = TRUE}
+# read the template data 
+template.place <- utils::read.csv(paste0(working.dir, template.file),
+                                  stringsAsFactors=FALSE) 
+
+print("Wards in data set: ")
+
+print(unique(template.place$WARD_NAME))
+```
+
+To select subarea(s) of interest, list their names in this vector. For now, these subareas are limited to ward names. 
 
 ```{r}
-subarea.select <- "ENTIRE_REGION"
 subarea.select <- c("LOIYANGALANI", "GOLBO")
 subarea.select <- "KARARE" 
+```
+
+Read the template data. Filter the data to keep only the grid cells within the subarea of interest. 
+
+```{r}
+# filter the template for subarea(s) of interest
+if (!identical(subarea.select, "ENTIRE_REGION")){ 
+  
+  template.place <- template.place %>% 
+    dplyr::filter(WARD_NAME %in% subarea.select) 
+  
+} 
+```
+
+Let's calculate how many grids are located within the selected subarea(s). 
+
+```{r results = TRUE}
+print(paste0("Your forecast will pull ", as.character(nrow(template.place)), 
+      " grids from the aWhere API"))
 ```
 
 Specify the base filename for outputs. It currently incorporates the name(s) of the subarea(s) of interest, but you can set it to be anything. 
@@ -124,13 +145,33 @@ filename.out <- paste("AOI_Forecast",
                       sep = "_")
 ```
 
-When plotting the weather data, we will first display a geographic base map. Define the latitude, longitude, and zoom values for the base map. For the entire CLIMARK region, a latitude of 2.5, longitude of 38, and zoom of 7 are appropriate values. 
+When plotting the weather data, we will first display a geographic base map. You can either define (1) the latitude and longitude of the center of your area of interest OR (2) the country name, in addition to a zoom values for the base map. For the entire CLIMARK region, a latitude of 2.5, longitude of 38, and zoom of 7 work well. 
 
 ```{r}
-# base map location and zoom values for mapping the forecast data. 
+# specific latitude and longitude coordinates and zoom value for the base map 
 map.lat <- 2.5
 map.lon <- 38
 map.zoom <- 7
+```
+
+To make sure you have the right base map coordinates, let's display it: 
+```{r results = TRUE, fig.align="center"}
+# create the base map 
+base.map = ggmap::get_map(location = c(lon = map.lon,  lat = map.lat), 
+                   zoom = map.zoom, 
+                   color = "bw")
+
+# display map of region
+gg.map <- ggmap(base.map)
+gg.map
+```
+
+Or you can set *location* = "kenya" instead of using a specific latitute and longitude.
+
+```{r results = TRUE, fig.align="center"}
+base.map <- ggmap::get_map(location = "Kenya", zoom = 6, color = "bw")
+gg.map <- ggmap(base.map)
+gg.map
 ```
 
 Set thresholds for different variables during mapping. For instance, we want our mapped range of precipitation data to be from 0 to 300 mm. 
@@ -142,22 +183,7 @@ thresh.precip.min <- 0 # [mm]
 
 ## Processing steps 
 
-Read the template data. Filter the data to keep only the grid cells within the subarea of interest. 
-
-```{r}
-# read the template data 
-template.place <- utils::read.csv(paste0(working.dir, template.file)) 
-
-# filter the template for subarea(s) of interest
-if (!identical(subarea.select, "ENTIRE_REGION")){ 
-  
-  template.place <- template.place %>% 
-    dplyr::filter(WARD_NAME %in% subarea.select) 
-  
-} 
-```
-
-Pull the aWhere weather data for the specified location and timespan. The R function that we use to pull the data is *generateaWhereDataset*, which comes from the *aWhereCharts* R package. 
+Pull the aWhere forecast data for the specified location and timespan. The R function that we use to pull the data is *generateaWhereDataset*, which comes from the *aWhereCharts* R package. 
 
 ```{r pull.weather.data}
 # query the aWhere API to get forecast data and write to file 
@@ -198,17 +224,7 @@ head(forecasts.n %>%
 
 To visualize the forecasted weather data geographically, let's plot the data on a map.
 
-```{r results=TRUE}
-# create the base map using the parameters defined earlier
-base.map = get_map(location = c(lon = map.lon, 
-                                lat = map.lat), 
-                   zoom = map.zoom, 
-                   color = "bw")
-
-# display map of region
-gg.map <- ggmap(base.map)
-#gg.map
-```
+First, let's clip the minimum and maximum values to a set range for mapping.  
 
 ```{r}
 # create a data frame for the variable thresholds.

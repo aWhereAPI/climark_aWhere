@@ -54,9 +54,25 @@ bins.ppet <- c(0, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.4, 1.6, 2.0, Inf)
 
 
 # base map location and zoom values for mapping the forecast data. 
+
+# LAT AND LON
 map.lat <- 2.5
 map.lon <- 38
 map.zoom <- 7
+
+# create the base map 
+base.map = ggmap::get_map(location = c(lon = map.lon,  lat = map.lat), 
+                          zoom = map.zoom, 
+                          color = "bw")
+
+# display map of region
+gg.map <- ggmap(base.map)
+gg.map
+
+# OR use location = country name
+base.map <- ggmap::get_map(location = "Kenya", zoom = 6, color = "bw")
+gg.map <- ggmap(base.map)
+gg.map
 
 
 # processing steps ----------------------------------------------------------
@@ -67,7 +83,7 @@ weather.file <- paste(weather.dir, weather.name, sep="")
 # read the weather data 
 weather.df <- read.csv(weather.file)
 
-# read the template data. remove columns that are not necessary.
+# read the template data. remove columns that are duplicated.
 template.df <- read.csv(template.file) %>% 
   dplyr::select( -c(shapewkt, longitude, latitude ))
 
@@ -288,8 +304,8 @@ bins.precip
 # data, remove the extra bins
 bins.precip <- bins.precip[bins.precip < (max(weather.template.df$CSUMPRE) + 5)] 
 
-# create a column to populate with the numeric range per bin 
-bin.range.precip <- vector(mode="character", length(bins.precip))
+# take a look at the bins after removing the ones that will be empty
+bins.precip
 
 # add a column for which bin/ bin range each grid falls into
 weather.template.df$bin.precip <- NA
@@ -429,17 +445,6 @@ head(ward.df %>% dplyr::select(-data))
 
 
 # mapping -----------------------------------------------------------------
-
-# create the base map using the parameters defined earlier
-base.map = ggmap::get_map(location = c(lon = map.lon, 
-                                lat = map.lat), 
-                   zoom = map.zoom, 
-                   color = "bw")
-
-# display map of region
-gg.map <- ggmap(base.map)
-gg.map
-
 
 # clip the extreme values of selected variables to map
 weather.template.df$cPovPET <- ClipValues(weather.template.df$CPOVRPR, 

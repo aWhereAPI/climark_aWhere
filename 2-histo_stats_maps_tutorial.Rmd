@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo=TRUE,
 
 # Introduction
 
-How to weather data distributions from the aWhere API compare for current and long-term normal observations?
+How to weather data distributions from the aWhere compare for current and long-term normal observations?
 
 # Code
 
@@ -104,7 +104,8 @@ bins.precip <- c(seq(from = 0, to = 300, by = 5), Inf)
 bins.ppet <- c(0, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.4, 1.6, 2.0, Inf) 
 ```
 
-When plotting the weather data, we will first display a geographic base map. Define the latitude, longitude, and zoom values for the base map. For the entire CLIMARK region, a latitude of 2.5, longitude of 38, and zoom of 7 are appropriate values. 
+When plotting the weather data, we will first display a geographic base map. Either (1) define the latitude and longitude OR country name, and zoom value for the base map. 
+For the entire CLIMARK region, a latitude of 2.5, longitude of 38, and zoom of 7 are appropriate values. Or you can set *location* = "kenya". 
 
 ```{r}
 # base map location and zoom values for mapping the forecast data. 
@@ -112,6 +113,31 @@ map.lat <- 2.5
 map.lon <- 38
 map.zoom <- 7
 ```
+
+\pagebreak
+
+To make sure you have the right base map coordinates, let's display it: 
+```{r results = TRUE, fig.align="center"}
+# create the base map 
+base.map = ggmap::get_map(location = c(lon = map.lon,  lat = map.lat), 
+                   zoom = map.zoom, 
+                   color = "bw")
+
+# display map of region
+gg.map <- ggmap(base.map)
+gg.map
+```
+
+\pagebreak
+
+Or you can set *location* = "kenya" instead of using a specific latitute and longitude.
+
+```{r results = TRUE, fig.align="center"}
+base.map <- ggmap::get_map(location = "Kenya", zoom = 6, color = "bw")
+gg.map <- ggmap(base.map)
+gg.map
+```
+
 
 
 ## Processing steps
@@ -129,7 +155,7 @@ weather.df <- read.csv(weather.file)
 Read the template data. Filter the data to keep only the grid cells within the subarea of interest. Merge the weather and template data by their location ID's into a single data frame. 
 
 ```{r}
-# read the template data. remove columns that are not necessary.
+# read the template data. remove columns that are duplicated.
 template.df <- read.csv(paste0(working.dir,template.file)) %>% 
   dplyr::select( -c(shapewkt, longitude, latitude ))
 
@@ -560,16 +586,6 @@ head(ward.df %>% dplyr::select(-data))
 # Mapping the weather variables 
 
 ```{r}
-# create the base map using the parameters defined earlier
-base.map = ggmap::get_map(location = c(lon = map.lon, 
-                                lat = map.lat), 
-                   zoom = map.zoom, 
-                   color = "bw")
-
-# display map of region
-gg.map <- ggmap(base.map)
-#gg.map
-
 
 # clip the extreme values of selected variables to map
 weather.template.df$cPovPET <- ClipValues(weather.template.df$CPOVRPR, 
