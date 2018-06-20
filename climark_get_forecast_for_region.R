@@ -54,7 +54,8 @@ template.file <- "CLIMARKonlyWardTemplate.csv"
 # for now, these subareas are limited to ward names. To generate a forecast
 # for the entire region instead, set subarea.select to ENTIRE_REGION. 
 subarea.select <- "ENTIRE_REGION"
-#subarea.select <- "KARARE" #c("KARARE", "GOLBO")
+subarea.select <- "KARARE" 
+subarea.select <- c("LOIYANGALANI", "GOLBO")
 
 # base filename for outputs. currently incorporates the name(s) of the 
 # subarea(s) of interest, but you can set it to be anything. 
@@ -74,7 +75,7 @@ thresh.precip.min <- 0 # [mm]
 # processing steps --------------------------------------------------------
 
 # load the aWhere API credentials file 
-aWhereAPI::load_credentials(credentials.file) 
+aWhereAPI::load_credentials(paste0(working.dir,credentials.file)) 
 
 # read the template data 
 template.place <- utils::read.csv(template.file) 
