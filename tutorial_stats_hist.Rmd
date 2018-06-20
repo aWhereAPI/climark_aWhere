@@ -31,6 +31,10 @@ Load the R packages that contain functions used in this script.
 
 ```{r load_packages}
 library(dplyr)
+library(tibble)
+library(tidyr)
+library(ggplot2)
+library(ggmap)
 library(aWhereAPI)
 library(aWhereCharts)
 ```
@@ -91,7 +95,16 @@ Define the bin ranges and increments to create tabular summaries of histogram da
 bins.precip <- c(seq(from = 0, to = 300, by = 5), Inf) 
 
 # P/PET
-bins.ppet <- c(0, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.4, 1.6, 2.0, Inf)   
+bins.ppet <- c(0, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.4, 1.6, 2.0, Inf) 
+```
+
+When plotting the weather data, we will first display a geographic base map. Define the latitude, longitude, and zoom values for the base map. For the entire CLIMARK region, a latitude of 2.5, longitude of 38, and zoom of 7 are appropriate values. 
+
+```{r}
+# base map location and zoom values for mapping the forecast data. 
+map.lat <- 2.5
+map.lon <- 38
+map.zoom <- 7
 ```
 
 
@@ -123,11 +136,12 @@ weather.template.df <- merge(get.wards.area,
                           template.df, by = "locationid")
 ```
 
-Let's take a look at the combined data set. 
+Let's take a look at the combined data set. Both the weather data and template data are available for each grid cell or location ID. 
 
 ```{r results=TRUE}
 head(weather.template.df %>% 
-       dplyr::select(locationid, WARD_NAME, latitude, longitude, CSUMPRE, CPOVRPR))
+       dplyr::select(locationid, latitude, longitude, CSUMPRE, 
+                     CPOVRPR, WARD_NAME))
 ```
 
 Write the combined data set to a .csv file. 
@@ -162,7 +176,8 @@ Let's take a look at the combined data set after the subarea filtering. If we ar
 
 ```{r results=TRUE}
 head(weather.template.df %>% 
-       dplyr::select(locationid, latitude, longitude, CSUMPRE, CPOVRPR, WARD_NAME))
+       dplyr::select(locationid, latitude, longitude, CSUMPRE, 
+                     CPOVRPR, WARD_NAME))
 ```
 
 ## Calculate statistics 
@@ -238,14 +253,12 @@ stats.out <- rbind(region.stats,
 Let's take a look at the statistics data.
 
 ```{r results=TRUE}
-# take a look at the statistics data 
-head(stats.out[,1:5], n = 10)
+head(stats.out[,1:5])
 ```
 
 Write these statistics to a .csv file.
 
 ```{r}
-# write ward statistics to file 
 write.csv(stats.out,
           paste("stats_by_subarea",
                 weather.name,
@@ -255,7 +268,317 @@ write.csv(stats.out,
 
 # Histograms 
 
-Visualize the data using the **generateaWhereHistogram** function within the **aWhereCharts** package.
+Visualize the data using the **generateaWhereHistogram** function within the **aWhereCharts** package. Compare the current versus long-term observations of each variable. 
+
+## Precipitation 
+
+```{r}
+hist.title <- paste("Histogram Precipitation", 
+                    tools::file_path_sans_ext(weather.name), sep = " ")
+
+aWhereCharts::generateaWhereHistogram(data = weather.template.df, 
+                        variable = "CSUMPRE", 
+                        title = hist.title, 
+                        xlabel = "mm", 
+                        compare = TRUE, 
+                        compare_var = "LTNSUMP")
+
+# write histogram to file 
+if (write.hist == TRUE) {
+  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
+       device = "png")
+}
+```
+
+## Minimum temperature
+
+```{r}
+hist.title <- paste("Histogram Min Temp", 
+                    tools::file_path_sans_ext(weather.name), sep = " ")
+
+generateaWhereHistogram(data = weather.template.df, 
+                        variable = "CAvgMinT", 
+                        title = hist.title, 
+                        xlabel = "Deg C", 
+                        compare = TRUE, 
+                        compare_var = "LTAvgMnT")
+
+# write histogram to file 
+if (write.hist == TRUE) {
+  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
+         device = "png")
+}
+```
+
+## Maximum temperature
+
+```{r}
+hist.title <- paste("Histogram Max Temp", 
+                    tools::file_path_sans_ext(weather.name), sep = " ")
+
+generateaWhereHistogram(data = weather.template.df, 
+                        variable = "CAvgMaxT", 
+                        title = hist.title, 
+                        xlabel = "Deg C", 
+                        compare = TRUE, 
+                        compare_var = "LTAvgMxT")
+
+# write histogram to file 
+if (write.hist == TRUE) {
+  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
+         device = "png")
+}
+```
+
+## P / PET
+
+Sometimes, the weather observations have a very large range with very few extreme values. This can result in a histogram with a large tail, which can make it difficult to interpret the region containing most of the data. To avoid this, we will clip the extreme values of the current P/PET and long-term average P/PET to a range of [0,2] using the ClipValues function, found in the "supporting_functions.R" file. 
+
+```{r}
+# clip the extreme values of CPOVRPR (current P/PET) and LTNASPO 
+# long-term average P/PET and place these clipped values in new columns,
+# "ctemp" and "LTNtemp"
+weather.template.df$ctemp <- ClipValues(weather.template.df$CPOVRPR, 
+                                        max.thresh = 2)
+weather.template.df$LTNtemp <- ClipValues(weather.template.df$LTNASPO, 
+                                        max.thresh = 2)
+
+# use this separate histogram function for now to plot P/PET
+source(paste0(working.dir, "function_generateaWhereHistogramPET.R"))
+
+# construct a descriptive title
+hist.title <- paste("Histogram PPET", 
+                    tools::file_path_sans_ext(weather.name), sep = " ")
+  
+generateaWhereHistogramPET(data = weather.template.df, 
+                           "ctemp", 
+                           title = hist.title, 
+                           xlabel = "P/PET", 
+                           compare = TRUE, 
+                           compare_var = "LTNtemp")
+
+# write histogram to file 
+if (write.hist == TRUE) {
+  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
+         device = "png")
+}
+```
+
+# Tabular summaries of histogram data
+
+In addition to visualizing the distribution of weather variables using histogram plots, it is helpful to summarize the number of observations within the bins using a table. 
+
+Let's count how many grid cells belong to each precipitation level. A list of precipitation bins was defined earlier in the script (*bins.precip*) from 0 mm to 300 mm. 
+
+```{r results=TRUE}
+# take a look at the bins
+bins.precip
+```
+
+If our actual precipitation data does not actually stretch up to 300 mm, we can remove some of those bins.
+
+```{r}
+# if the initial precipitation bins extend beyond the actual range of precip
+# data, remove the extra bins
+bins.precip <- bins.precip[bins.precip < (max(weather.template.df$CSUMPRE) + 5)] 
+```
+
+```{r results=TRUE}
+# take a look at the bins after removing the ones that will be empty
+bins.precip
+```
+
+Let's create empty columns in our data frame to keep track of the precipitation bin (*bin.precip*) and the extent of the bin, "0-5 mm", "5-10 mm", etc. (*bin.range.precip*). 
+
+```{r}
+# add a column for which bin/ bin range each grid falls into
+weather.template.df$bin.precip <- NA
+weather.template.df$bin.range.precip <- NA
+```
+
+For every grid cell, keep track of which precipitation bin and bin range it belongs to. For instance, a precipitation value of 7.6mm will fall into bin number 2, which has a range of 5-10 mm. 
+
+```{r}
+# loop through each bin and populate the appropriate values
+for(b in 1:(length(bins.precip)-1)){
+  
+  # indices of entries that fall in the current bin
+  idx <- weather.template.df$CSUMPRE >= bins.precip[b] & 
+                   weather.template.df$CSUMPRE < bins.precip[b+1]
+  
+  # add the bin number to each row
+  weather.template.df$bin.precip[idx] <- b
+  
+  # add the bin range to each row 
+  weather.template.df$bin.range.precip[idx] <- paste(as.character(bins.precip[b]),
+                                      " - ",
+                                      as.character(bins.precip[b+1]),
+                                      sep="")
+}
+```
+
+Let's count the total number of grids per precipitation bin, in addition to the percentage of total grids. By regrouping our data, we can display a nice tabular summary that corresponds to what the precipitation histogram showed. 
+
+```{r results=TRUE}
+# add columns for number of grids per precip level
+weather.template.df <- weather.template.df %>% 
+  dplyr::group_by(bin.precip) %>%
+  dplyr::mutate(grid.count.precip = n(),
+         grid.percent.precip = 100 * n() / nrow(weather.template.df))
+
+# nest the data within each bin and show a summary
+weather.template.nested.precip <- weather.template.df %>% 
+  dplyr::group_by(bin.precip, 
+           bin.range.precip,
+           grid.count.precip, 
+           grid.percent.precip) %>%
+  tidyr::nest() %>% 
+  dplyr::arrange(bin.precip)
+
+# take a look at the nested data. 
+# this is essentially the histogram in tabular form
+head(weather.template.nested.precip %>% dplyr::select(-data))
+```
+
+We can perform the same steps to generate a tabular summary for the P/PET variable: 
+
+```{r results=TRUE}
+# take a look at the P/PET bins
+bins.ppet
+```
+
+```{r}
+# add a column for which bin the grid falls into
+weather.template.df$bin.ppet <- NA
+weather.template.df$bin.range.ppet <- NA
+
+# loop through each bin and populate the appropriate values
+for(b in 1:(length(bins.ppet)-1)){
+  
+  # indices of entries that fall in the current bin
+  idx <- weather.template.df$CPOVRPR >= bins.ppet[b] & 
+    weather.template.df$CPOVRPR < bins.ppet[b+1]           
+  
+  # add the bin number to each row
+  weather.template.df$bin.ppet[idx] <- b
+  
+  # add the bin range to each row 
+  weather.template.df$bin.range.ppet[idx] <- paste(as.character(bins.ppet[b]),
+                                           " - ",
+                                           as.character(bins.ppet[b+1]),
+                                           sep="")
+}
+
+# add columns for number of grids per ppet level
+weather.template.df <- weather.template.df %>% 
+  dplyr::group_by(bin.ppet) %>%
+  dplyr::mutate(grid.count.ppet = n(),
+         grid.percent.ppet = 100 * n() / nrow(weather.template.df))
+
+weather.template.nested.ppet <- weather.template.df %>% 
+  dplyr::group_by(bin.ppet, 
+           bin.range.ppet,
+           grid.count.ppet, 
+           grid.percent.ppet) %>%
+  tidyr::nest() %>% 
+  dplyr::arrange(bin.ppet)
+```
+
+```{r results=TRUE}
+# take a look at the nested data
+# this is essentially the P/PET histogram in tabular form
+head(weather.template.nested.ppet %>% dplyr::select(-data))
+```
+
+# Ward narrative 
+
+```{r}
+# To create a narrative about the percentage of a ward receiving 
+# a given precip or p/pet level, we can subset the larger data frame 
+# and see the distribution of grids cells at different precipitation / ppet levels
+ward.select = "TURBI"
+ward.select = "KARARE"
+
+# filter the data for the ward of interest
+ward.df <- weather.template.df %>% 
+  dplyr::filter(WARD_NAME %in% ward.select) 
+
+# count total number of grids in ward 
+ward.grid.count <- nrow(ward.df)
+
+# calculate the number of grids and % of grids per precip bin
+ward.df <- ward.df %>%
+  dplyr::group_by(bin.precip) %>% 
+  dplyr::mutate(bin.grid.count.ward = n(),
+                bin.grid.percent.ward = 100 * (bin.grid.count.ward / 
+                                                 ward.grid.count)) %>%
+  dplyr::group_by(bin.precip,
+                  bin.range.precip,
+                  bin.grid.count.ward,
+                  bin.grid.percent.ward) %>%
+  tidyr::nest() %>% 
+    dplyr::arrange(bin.precip)
+```
+
+```{r results=TRUE}
+# take a look at the grid count and percentages per precip level
+head(ward.df %>% dplyr::select(-data))
+```
+
+# Mapping the weather variables 
+
+```{r}
+# create the base map using the parameters defined earlier
+base.map = ggmap::get_map(location = c(lon = map.lon, 
+                                lat = map.lat), 
+                   zoom = map.zoom, 
+                   color = "bw")
+
+# display map of region
+gg.map <- ggmap(base.map)
+#gg.map
 
 
+# clip the extreme values of selected variables to map
+weather.template.df$cPovPET <- ClipValues(weather.template.df$CPOVRPR, 
+                                       max.thresh = 2)
+weather.template.df$cLTNPPET <- ClipValues(weather.template.df$LTNASPO, 
+                                          max.thresh = 2)
+weather.template.df$aPre <- ClipValues(weather.template.df$CSUMPRE, 
+                                           max.thresh = 300)
+weather.template.df$aLTNPRE <- ClipValues(weather.template.df$LTNSUMP, 
+                                       max.thresh = 400)
+weather.template.df$aDinPre <- ClipValues(weather.template.df$DFLTSUM, 
+                                          max.thresh = 250,
+                                          min.thresh = -250)
+
+ggmap.df <- weather.template.df
+
+# Expand wkt to format usable by ggplot
+polygon.df = as.tibble(wicket::wkt_coords(ggmap.df$shapewkt))
+polygon.df$aPre <- ggmap.df$aPre[polygon.df$object]
+polygon.df$cPovPET = ggmap.df$cPovPET[polygon.df$object]
+polygon.df$aDinPre = ggmap.df$aDinPre[polygon.df$object]
+
+# call the MakeMap function from the "supporting_functions.R" script to create a map
+# for each of the specified variables
+```
+
+```{r results=TRUE}
+# Precipitation map
+MakeMap(df = polygon.df, v = "pre", base.map, 
+        tools::file_path_sans_ext(weather.name), write.file = TRUE)
+```
+
+```{r results=TRUE}
+# P/PET map
+MakeMap(df = polygon.df, v = "ppet", base.map, 
+        tools::file_path_sans_ext(weather.name), write.file = TRUE)
+```
+
+```{r results=TRUE}
+# P LTN map
+MakeMap(df = polygon.df, v = "pltn", base.map, 
+        tools::file_path_sans_ext(weather.name), write.file = TRUE)
+```
 

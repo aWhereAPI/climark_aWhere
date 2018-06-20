@@ -342,6 +342,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
     c.mid <- "green"
     c.high <- "blue"
     mid.point <- 150
+    legend.limits <- c(0,300)
     
   } else if(v=="ppet") { # P / PET 
     title.main <- paste0("P/PET ", 
@@ -353,6 +354,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
     c.mid <- "green"
     c.high <- "blue"
     mid.point <- 1.0
+    legend.limits <- c(0,2.0)
     
   } else if(v=="pltn") { # LTN Pre
     title.main <- paste0("Precip vrs. LTN Precip ", 
@@ -364,6 +366,7 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
     c.mid <- "white"
     c.high <- "blue"
     mid.point <- 0
+    legend.limits <- c(-250, 250)
     
   } else {
     print("Unknown variable type provided. Please use 'pre', 'ppet', or 'pltn' ")
@@ -386,7 +389,8 @@ MakeMap <- function(df, v = "pre", base.map, map.name,
                          mid = c.mid,
                          high = c.high, 
                          midpoint = mid.point,
-                         name = title.legend ) +
+                         name = title.legend,
+                         limits = legend.limits) +
     ggplot2::ggtitle(title.main)
   climark.map
   
