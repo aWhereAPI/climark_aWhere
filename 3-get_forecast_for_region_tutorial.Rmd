@@ -56,7 +56,7 @@ setwd(working.dir)
 knitr::opts_knit$set(root.dir = working.dir)
 ```
 
-Use the *source* function to load R functions that are located on your local machine. For this tutorial, there are a few functions within the *0-supporting_functions.R* file. There is a zero in the beginning of this filename so it appears at the top of the list when displayed alphabetically. 
+Use the *source* function to load R functions that are located on your local machine. For this tutorial, there are a few functions within the *0-supporting_functions.R* file. There is a zero in the beginning of this filename so it appears at the top when files are sorted alphabetically. 
 
 ```{r load.functions}
 # load external R functions in local file
