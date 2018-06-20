@@ -56,11 +56,11 @@ working.dir <- "~/Documents/aWhere/"
 setwd(working.dir)
 ```
 
-Use the *source* function to load R functions that are located on your local machine. For this tutorial, there are a few functions within the *supporting_functions.R* file. 
+Use the *source* function to load R functions that are located on your local machine. For this tutorial, there are a few functions within the *0-supporting_functions.R* file. There is a zero in the beginning of this filename so it appears at the top when files are sorted alphabetically. 
 
 ```{r load.functions}
 # load external R functions in local file
-source("supporting_functions.R")
+source("0-supporting_functions.R")
 ```
 
 To pull data from the aWhere API, you'll need a Consumer Key and Secret, like a username and password. Put these in a text file with the following format: line 1 is the Consumer Key, line 2 is the Consumer Secret, and line 3 is a blank line. Set the *credentials.file* variable equal to the name of this text file. Place your credentials file in your working directory. 
@@ -180,7 +180,7 @@ lat.lon <- paste0(" (", lat, ", ", lon, ")")
 max.temp.1.title <- paste0(location.name, "_Maximum Temp w StdDev ")
 ```
 
-Generate the plot using the *generateaWhereStdDevChart* function from the *aWhereCharts* package. Display the plot and write it to .JPEG file using the WriteJpeg function, an external R function in the "supporting_functions.R" file. 
+Generate the plot using the *generateaWhereStdDevChart* function from the *aWhereCharts* package. Display the plot and write it to .JPEG file using the WriteJpeg function, an external R function in the supporting_functions file. 
 
 ```{r}
 # generate the chart 
@@ -348,7 +348,7 @@ The "current" observations (blue line) are within the *day.start* and *day.end* 
 #max.temp.1 
 
 # write the plot to file using the WriteJpeg function, an external R function
-# in the "supporting_functions.R" file.
+# in the supporting_functions file.
 WriteJpeg(plt = max.temp.1, plt.title = max.temp.1.title)
 
 

@@ -56,11 +56,11 @@ working.dir <- "~/Documents/aWhere/"
 setwd(working.dir)
 ```
 
-Use the *source* function to load R functions that are located on your local machine. For this tutorial, there are a few functions within the *supporting_functions.R* file. 
+Use the *source* function to load R functions that are located on your local machine. For this tutorial, there are a few functions within the *0-supporting_functions.R* file. There is a zero in the beginning of this filename so it appears at the top when files are sorted alphabetically. 
 
 ```{r load.functions}
 # load external R functions in local file
-source("supporting_functions.R")
+source("0-supporting_functions.R")
 ```
 
 Specify the weather data directory and file name. 
@@ -337,7 +337,7 @@ if (write.hist == TRUE) {
 
 ## P / PET
 
-Sometimes, the weather observations have a very large range with very few extreme values. This can result in a histogram with a large tail, which can make it difficult to interpret the region containing most of the data. To avoid this, we will clip the extreme values of the current P/PET and long-term average P/PET to a range of [0,2] using the ClipValues function, found in the "supporting_functions.R" file. 
+Sometimes, the weather observations have a very large range with very few extreme values. This can result in a histogram with a large tail, which can make it difficult to interpret the region containing most of the data. To avoid this, we will clip the extreme values of the current P/PET and long-term average P/PET to a range of [0,2] using the ClipValues function, found in the supporting_functions file. 
 
 ```{r}
 # clip the extreme values of CPOVRPR (current P/PET) and LTNASPO 
@@ -591,7 +591,7 @@ polygon.df$aPre <- ggmap.df$aPre[polygon.df$object]
 polygon.df$cPovPET = ggmap.df$cPovPET[polygon.df$object]
 polygon.df$aDinPre = ggmap.df$aDinPre[polygon.df$object]
 
-# call the MakeMap function from the "supporting_functions.R" script to create a map
+# call the MakeMap function from the supporting_functions script to create a map
 # for each of the specified variables
 ```
 

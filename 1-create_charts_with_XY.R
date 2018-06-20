@@ -23,7 +23,7 @@ working.dir <- "~/Documents/aWhere/"
 setwd(working.dir)
 
 # load external R functions in local file
-source("supporting_functions.R")
+source("0-supporting_functions.R")
 
 # filename containing your aWhere credientials (key and secret),
 # a text file where line 1 is the Consumer Key,

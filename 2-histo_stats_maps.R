@@ -22,7 +22,7 @@ working.dir <- "~/Documents/aWhere/"
 setwd(working.dir)
 
 # load external functions 
-source("supporting_functions.R")
+source("0-supporting_functions.R")
 
 # specify the weather data directory and file name
 weather.dir <- "climark_work_csvs/" 
@@ -462,7 +462,7 @@ polygon.df$aPre <- ggmap.df$aPre[polygon.df$object]
 polygon.df$cPovPET = ggmap.df$cPovPET[polygon.df$object]
 polygon.df$aDinPre = ggmap.df$aDinPre[polygon.df$object]
 
-# call the MakeMap function from the "supporting_functions.R" script to create a map
+# call the MakeMap function from the supporting_functions script to create a map
 # for each of the specified variables
 
 # Precipitation map
