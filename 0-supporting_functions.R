@@ -254,6 +254,27 @@ ClipValues <- function(values, max.thresh, min.thresh = 0){
 # MapForecast -------------------------------------------------------------
 
 MapForecast <- function(forecasts.n, base.map, thresholds){
+  # Calls the MakeMap function to map forecasted weather data 
+  # aggregated by n-days (as specified in the forecasts.n 
+  # data frame). Current functionality only supports precipitation
+  # data, but can easily be modified to map other variables as well.
+  #
+  # Args
+  #   forecasts.n
+  #     (data frame) contains the columns "n.day" (the number of 
+  #     days used to aggregate forecast data), precip.amount.sum (aggregated)
+  #     precipitation amount), and shapewkt (polygon data), the data to be 
+  #     mapped.
+  #   
+  #   base.map
+  #     (ggmap raster)
+  #         map object on which to overlay the gridded weather data
+  #
+  #   thresholds
+  #     (data frame) data frame containing the minimum (first row) and maximum
+  #     (second row) threshold values to clip weather variables (column names)
+  #     
+  
   
   forecast.maps <- list()
   
