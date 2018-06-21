@@ -235,12 +235,79 @@ colnames(thresholds) <- "precip"
 row.names(thresholds) <- (c("min","max"))
 ```
 
+## 7-day forecast summary map
 
-```{r}
-# map the forecast summaries one at a time 
-forecast.maps <- MapForecast(forecasts.n, base.map, thresholds)
+```{r results=TRUE, fig.align='center'}
+# keep only the 7-day forecast summary values
+# clip the precip values to be between 0 and 300mm
+forecast.7day <- forecasts.n %>% 
+  dplyr::filter(n.day == 7) %>% 
+  dplyr::mutate(aPre = ClipValues(precip.amount.sum,
+                                  max.thresh = thresholds$precip[2]))
 
-# to access one of the individual forecast maps: 
-forecast.maps$`3-day`
+# add geometry information for mapping with ggplot
+polygon.df = tibble::as.tibble(wicket::wkt_coords(forecast.7day$shapewkt))
+polygon.df$aPre <- forecast.7day$aPre[polygon.df$object] 
+
+# add n-day forecast to output filename
+map.title.7 <- paste(filename.out, "7-day_forecast", sep="_")
+
+# create the precip map
+precip.map.7 <- ggmap(base.map) +
+  geom_polygon( aes( x = lng, y = lat, 
+                     group = object, fill = aPre),
+                data = polygon.df, alpha = 0.7) +
+  scale_fill_gradient2(breaks = seq(0,300, by = 50), 
+                       low = "red", mid = "green", high = "blue", 
+                       midpoint = 150, limits = c(0,300),
+                       name="Precipitation (mm)") +
+  ggtitle(map.title.7)
+
+precip.map.7
+
+# save map to file 
+ggsave(filename = paste0(map.title.7, ".png"), 
+       precip.map.7, width = 6.02, height = 3.38, units = "in")
 ```
+
+
+## 3-day forecast summary map
+
+```{r results=TRUE, fig.align='center'}
+
+# keep only the 3-day forecast summary values
+# clip the precip values to be between 0 and 300mm
+forecast.3day <- forecasts.n %>% 
+  dplyr::filter(n.day == 3) %>% 
+  dplyr::mutate(aPre = ClipValues(precip.amount.sum,
+                                  max.thresh = thresholds$precip[2]))
+
+# add geometry information for mapping with ggplot
+polygon.df = tibble::as.tibble(wicket::wkt_coords(forecast.3day$shapewkt))
+polygon.df$aPre <- forecast.3day$aPre[polygon.df$object] 
+
+# add n-day forecast to output filename
+map.title.3 <- paste(filename.out, "3-day_forecast", sep="_")
+
+# create the precip map
+precip.map.3 <- ggmap(base.map) +
+  geom_polygon( aes( x = lng, y = lat, 
+                     group = object, fill = aPre),
+                data = polygon.df, alpha = 0.7) +
+  scale_fill_gradient2(breaks = seq(0,300, by = 50), 
+                       low = "red", mid = "green", high = "blue", 
+                       midpoint = 150, limits = c(0,300),
+                       name="Precipitation (mm)") +
+  ggtitle(map.title.3)
+
+precip.map.3
+
+# save map to file 
+ggsave(filename = paste0(map.title.3, ".png"), 
+       precip.map.3, width = 6.02, height = 3.38, units = "in")
+```
+
+
+
+
 

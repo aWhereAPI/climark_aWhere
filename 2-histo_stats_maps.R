@@ -467,18 +467,73 @@ polygon.df$aPre <- ggmap.df$aPre[polygon.df$object]
 polygon.df$cPovPET = ggmap.df$cPovPET[polygon.df$object]
 polygon.df$aDinPre = ggmap.df$aDinPre[polygon.df$object]
 
-# call the MakeMap function from the supporting_functions script to create a map
-# for each of the specified variables
 
-# Precipitation map
-MakeMap(df = polygon.df, v = "pre", base.map, 
-        tools::file_path_sans_ext(weather.name), write.file = TRUE)
+# create a map for each of the specified variables
 
-# P/PET map
-MakeMap(df = polygon.df, v = "ppet", base.map, 
-        tools::file_path_sans_ext(weather.name), write.file = TRUE)
+# precipitation
+precip.map.title <- paste("Precipitation",
+                           tools::file_path_sans_ext(weather.name))
 
-# P LTN map
-MakeMap(df = polygon.df, v = "pltn", base.map, 
-        tools::file_path_sans_ext(weather.name), write.file = TRUE)
+precip.map <- ggmap(base.map) +
+  geom_polygon( aes( x = lng, y = lat, 
+                     group = object, fill = aPre),
+                data = polygon.df, alpha = 0.7) +
+  scale_fill_gradient2(breaks = seq(0,300, by = 50), 
+                       low = "red", mid = "green", high = "blue", 
+                       midpoint = 150, limits = c(0,300),
+                       name="Precipitation (mm)") +
+  ggtitle(precip.map.title)
+
+precip.map
+
+# save the map to file
+ggsave(filename = paste0(precip.map.title, ".png"), 
+       precip.map, width = 6.02, height = 3.38, units = "in")
+
+
+# P / PET 
+ppet.map.title <- paste("P PET",
+                           tools::file_path_sans_ext(weather.name),
+                        sep="_")
+
+ppet.map <- ggmap(base.map) +
+  geom_polygon( aes( x = lng, y = lat, 
+                     group = object, fill = cPovPET),
+                data = polygon.df, alpha = 0.7) +
+  scale_fill_gradient2(breaks = seq(0,2, by = 0.2), 
+                       low = "red", mid = "green", high = "blue", 
+                       midpoint = 1.0, limits = c(0,2.0),
+                       name="P/PET") +
+  ggtitle(ppet.map.title)
+
+ppet.map
+
+# save the map to file
+ggsave(filename = paste0(ppet.map.title, ".png"), 
+       ppet.map, width = 6.02, height = 3.38, units = "in")
+
+
+# LTN precipitation
+pltn.map.title <- paste("LTN Precipitation",
+                         tools::file_path_sans_ext(weather.name),
+                        sep="_")
+
+pltn.map <- ggmap(base.map) +
+  geom_polygon( aes( x = lng, y = lat, 
+                     group = object, fill = aDinPre),
+                data = polygon.df, alpha = 0.7) +
+  scale_fill_gradient2(breaks = seq(-250,250, by = 50), 
+                       low = "red", mid = "white", high = "blue", 
+                       midpoint = 0, limits = c(-250,250),
+                       name="LTN Precipitation (mm)") +
+  ggtitle(pltn.map.title)
+
+pltn.map
+
+# save the map to file
+ggsave(filename = paste0(pltn.map.title, ".png"), 
+       pltn.map, width = 6.02, height = 3.38, units = "in")
+
+
+
 
