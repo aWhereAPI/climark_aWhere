@@ -1,0 +1,407 @@
+---
+title: "CLIMARK Charts Tutorial: Plotting aWhere weather time series data for an X,Y location"
+author: "Victoria Scholl"
+date: "6/19/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE,
+                      message=FALSE,
+                      warning=FALSE,
+                      results = 'hide')
+```
+
+# Introduction
+
+This document describes how to generate aWhere weather data charts for a given location and timespan. Current/forecasted weather data is pulled from the aWhere API along with long-term normals for that same time span. Displaying line plots for variables of interest such as maximum temperature and P/PET allows us to observe weather trends and how current conditions compare to the past. 
+
+# Code
+
+## Install / load R packages
+
+First, install the aWhere R packages. 
+
+```{r install_aWhere_packages, eval=FALSE}
+# install aWhere R packages
+library(devtools)
+devtools::install_github("aWhereAPI/aWhere-R-Library")
+devtools::install_github("aWhereAPI/aWhere-R-Charts")
+```
+
+Load the R packages that contain functions used in this script. 
+
+```{r load_packages}
+# load required packages 
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(aWhereAPI)
+library(zoo)
+library(aWhereCharts)
+library(curl)
+library(knitr)
+```
+
+## Define input files and parameters
+
+Define your working directory. This is the place on your computer where your input files are located for this tutorial, and it is also where the output files will be written. Instead of typing out the entire path to every file that we need ("absolute" paths), you can just use their filenames or locations within this working directory ("relative" paths) since we are setting this working directory as our starting point for the rest of the tutorial. 
+
+```{r set.wd}
+# define your working directory - where input files are located and outputs will be saved
+working.dir <- "~/Documents/aWhere/"
+
+# set the working directory
+setwd(working.dir)
+```
+
+Use the *source* function to load R functions that are located on your local machine. For this tutorial, there are a few functions within the *0-supporting_functions.R* file. There is a zero in the beginning of this filename so it appears at the top when files are sorted alphabetically. 
+
+```{r load.functions}
+# load external R functions in local file
+source("0-supporting_functions.R")
+```
+
+To pull data from the aWhere API, you'll need a Consumer Key and Secret, like a username and password. Put these in a text file with the following format: line 1 is the Consumer Key, line 2 is the Consumer Secret, and line 3 is a blank line. Set the *credentials.file* variable equal to the name of this text file. Place your credentials file in your working directory. 
+
+```{r set.credentials.file}
+# filename containing your aWhere credientials (key and secret)
+credentials.file <- "credentials.txt"
+
+# load the aWhere API credentials file 
+aWhereAPI::load_credentials(paste0(working.dir, credentials.file))
+```
+
+What location do you want to produce weather data charts for? Specify the latitude and longitude, along with a name describing the place. This name will be used for the chart names and output file names.
+
+```{r set.location}
+# latitude, longitude, and name of location 
+lat <- 3.2
+lon <- 37.0
+location.name <- paste("Shamba1") 
+```
+
+What timespan to you want to acquire weather data for? Specify the years and dates here. *Years* is a vector with the starting year in position 1 and the ending year in position 2, for the long-term analysis. 
+
+The starting and ending days should have the format "YYYY-MM-DD" and should not exceed a period greater than 365 days. If you want the ending date to be *n* days from now (including some forecasted weather data), add or subtract *n* to the current date (which can be acquired using the *Sys.Date()* function). In the code below, *n* = 7 so the end date is seven days from now. 
+
+```{r set.years.days}
+# starting and ending years and days for the time series. 
+# "years"" is a vector with the starting year in position 1 and the ending
+# year in position 2, for the long-term analysis. 
+years <- c(2010, 2017)
+
+#starting and ending days with format "YYYY-MM-DD"
+day.start <- "2018-03-01"
+day.end <- "2018-03-08" # specific date
+day.end <- as.character(Sys.Date() + 6) # today plus n
+
+# combine the days into a single vector 
+days <- c(day.start, day.end)
+```
+
+Some of the charts will require additional parameters. For instance, effective precipitation can be calculated using a threshold (*eP* in the code below). Rolling average calculations require a window size or number of days to average over (*roll.avg* in the code below). 
+
+```{r extra.parameters}
+# effective precip amount for consistency across plots
+eP <- 30    
+
+# size of rolling average window for consistency across plots
+roll.avg <- 30
+```
+
+
+## Processing steps 
+
+The duration for our time range cannot exceed 364 days. Let's make sure our day range is an acceptable length. 
+
+```{r check.duration}
+# Check if time range is more than 365 days
+duration <- as.Date(days[2]) - as.Date(days[1])
+
+if(duration > 365) { 
+  print ("Period too long")
+}
+```
+
+Pull the aWhere weather data for the specified location and timespan. 
+
+The R function that we use to pull the data is *generateaWhereDataset*, which comes from the *aWhereCharts* R package. It's good practice to specify which package each function is from, since multiple packages may have different functions with the same names. The syntax for doing this is to use two colons between the package and function names, like this: **package::function()**. 
+
+```{r pull.weather.data}
+# pull the datasets: query the aWhere API
+weather.df <- aWhereCharts::generateaWhereDataset(lat = lat, lon = lon, 
+                                                  day_start = days[1], 
+                                                  day_end = days[2], 
+                                                  year_start = years[1], 
+                                                  year_end = years[2])
+
+# reorder the columns in the data frame
+weather.df <- weather.df %>% 
+  select(day, date, latitude, longitude, everything())
+```
+Let's take a look at the weather data using the *head* function from the *utils* R package. 
+
+```{r show.weather.data, results=TRUE}
+# select the first five columns of the data frame using [,1:5]
+# and show the first 10 rows using the "n" argument
+utils::head(weather.df[,1:5], n = 10)
+```
+
+Write the weather data to a .csv file for further analysis. Use the latitude, longitude, date range, and year range in the filename so future-you will know exactly what's inside this file. 
+
+```{r write.weather.data}
+# write data to .csv file 
+utils::write.csv(weather.df, 
+                 file = paste(location.name,
+                              base::paste(days, collapse="_"),
+                              base::paste(years, collapse="_"),
+                              ".csv", sep="_"))
+```
+
+# Charts
+
+Within the *aWhereCharts* package, there are two functions used here to create
+time series charts. **generateaWhereChart** makes line plots comparing the current and long-term normals for each variable. **generateaWhereStdDevChart** plots aWhere weather data with one standard 
+deviation's shading above and below the long-term normalline. This function is meant to help users understand whether the current weather conditions are significantly outside the norm. 
+
+Plots with standard deviation are named with "1" at the end of the variable, and those without standard deviation are named with "2". 
+
+## Individual charts
+
+Contruct the title for this chart using the variable name, location name, and the latitude/longitude.
+
+```{r max.temp.1}
+# create a variable containing the lat and lon, for plot titles
+lat.lon <- paste0(" (", lat, ", ", lon, ")") 
+
+# construct title
+max.temp.1.title <- paste0(location.name, "_Maximum Temp w StdDev ")
+```
+
+Generate the plot using the *generateaWhereStdDevChart* function from the *aWhereCharts* package. Display the plot and write it to .JPEG file using the WriteJpeg function, an external R function in the supporting_functions file. 
+
+```{r}
+# generate the chart 
+max.temp.1 <- aWhereCharts::generateaWhereStdDevChart(data = weather.df, 
+                                                variable = "maxTemp", 
+                                                title = paste0(max.temp.1.title,
+                                                                lat.lon))
+# display the chart by referencing its variable name 
+#max.temp.1
+
+# write chart to JPEG
+#WriteJpeg(plt = max.temp.1, plt.title = max.temp.1.title)
+```
+
+In the following section, these same steps are performed for a series of other variables in the aWhere weather data set. 
+
+```{r individual_plots}
+# Minimum temperature with standard deviation ---------------------------------
+min.temp.1.title <- paste0(location.name, "_Minimum Temp w StdDev")
+
+min.temp.1 <- aWhereCharts::generateaWhereStdDevChart(weather.df, 
+                                                "minTemp", 
+                                                title = paste0(min.temp.1.title,
+                                                                lat.lon))
+
+# Potential evapotranspiration (PET) with standard deviation -----------------
+pet.1.title <- paste0(location.name, "_PET w StdDev")
+
+pet.1 <- aWhereCharts::generateaWhereStdDevChart(weather.df, 
+                                                 "pet", 
+                                                 title = paste0(pet.1.title,
+                                                                lat.lon))
+
+# Daily precipitation with standard deviation  ---------------------------
+precip.1.title <- paste0(location.name, "_Daily Precipitation w StdDev")
+
+precip.1 <- aWhereCharts::generateaWhereStdDevChart(weather.df, 
+                                              "precipitation",  
+                                              title = paste0(precip.1.title,
+                                                              lat.lon))
+
+
+# Daily precipitation without standard deviation  ---------------------------
+precip.2.title <- paste0(location.name, "_Daily Precipitation")
+
+precip.2 <- aWhereCharts::generateaWhereChart(weather.df,
+                                              "precipitation",    
+                                              title = paste0(precip.2.title,
+                                                             lat.lon))
+
+
+# Accumulated Precipitation with StdDev but no Effective Precipitation --------
+no.eprecip.1.title <- paste0(location.name, 
+                             "_Accumulated Precipitation w StdDev")
+
+no.eprecip.1 <- aWhereCharts::generateaWhereStdDevChart(weather.df, 
+                                            "accumulatedPrecipitation",
+                                            title = paste0(no.eprecip.1.title,
+                                                            lat.lon))
+
+
+# Precipitation and Effective Precipitation, Accumulated ------------------
+eprecip.1.title <- paste0(location.name, "_Precipitation and",
+                          " Effective Precipitation, Accumulated w Std Dev")
+
+eprecip.1 <- aWhereCharts::generateaWhereStdDevChart(weather.df, 
+                                              "accumulatedPrecipitation",
+                                              title = paste0(eprecip.1.title,
+                                                            lat.lon),
+                                              e_precip = TRUE, 
+                                              e_threshold = eP)
+
+
+# Accumulated Precipitation -----------------------------------------------
+acc.precip.2.title <- paste0(location.name, "_Accumulated Precipitation")
+
+acc.precip.2 <- aWhereCharts::generateaWhereChart(weather.df, 
+                                            "accumulatedPrecipitation", 
+                                            title = paste0(acc.precip.2.title,
+                                                            lat.lon))
+
+
+# Accumulated PET ---------------------------------------------------------
+acc.pet.1.title <- paste0(location.name, "_Accumulated PET w StdDev")
+
+acc.pet.1 <- aWhereCharts::generateaWhereStdDevChart(weather.df, 
+                                                "accumulatedPet",
+                                                title = paste0(acc.pet.1.title,
+                                                              lat.lon))
+                                                     
+
+# P/PET -------------------------------------------------------------------
+# ppet rarely is interpretable on a daily chart 
+ppet.2.title <- paste0(location.name,"_PPET")
+
+ppet.2 <- aWhereCharts::generateaWhereChart(weather.df, 
+                                            "ppet", 
+                                            title = paste0(ppet.2.title,
+                                                           lat.lon))
+
+
+# 30 day rolling average eP/PET and P/PET ---------------------------------
+# no eprecip/PET shows up if all rainfall events are less than the e_threshold
+rolling.avg.ppet.2.title <- paste0(location.name,
+                                   "_30 day rolling avg eP PET and P PET")
+
+rolling.avg.ppet.2 <- aWhereCharts::generateaWhereChart(weather.df, 
+                                      "rollingavgppet",
+                                      title = paste0(rolling.avg.ppet.2.title,
+                                                     lat.lon),
+                                      e_precip = TRUE, 
+                                      e_threshold = eP, 
+                                      rolling_window = roll.avg)
+```
+
+## Multiplot 
+
+Select any of the above charts to display together in a multiplot using their variable names: 
+  * max.temp.1
+  * min.temp.1
+  * pet.1
+  * precip.1
+  * precip.2
+  * no.eprecip.1
+  * eprecip.1
+  * acc.precip.2
+  * acc.pet.1
+  * ppet.2
+  * rolling.avg.ppet.2
+  
+```{r multiplot, results=FALSE}
+# create multiplot and write to file
+
+# set the graphics device parameters to write a .JPEG
+multiplot.file <- paste0(location.name,"_4chart.jpeg")
+jpeg(multiplot.file, 
+     width = 12, height = 6, 
+     units = 'in', res = 500)
+
+# create a multiplot 
+aWhereCharts::generateMultiplot(eprecip.1, rolling.avg.ppet.2, 
+                                             max.temp.1, pet.1,
+                                             cols = 2, fontsize = 15, 
+                                             title = paste0("Current vs LTN at ", 
+                                                            location.name," (", 
+                                                            lat, ", ", lon, ")", 
+                                                            "   eP = ",eP,"mm"))
+# close the current plot object
+dev.off()
+```
+
+![Multiplot](Shamba1_4chart.jpeg)
+
+
+The "current" observations (blue line) are within the *day.start* and *day.end* range that you set earlier. The "LTN" (long-term normal) observations (orange line) are calculated over the course of the year range that you set earlier. The orange shading around the orange line is one standard deviation of the observations to illustrate variability. If your day range extends into the future (beyond today), a black dashed line indicates the start of the forecasted data. 
+
+\pagebreak
+
+# Display & write individual charts to file
+
+```{r}
+# Maximum temperature
+
+# display plot
+#max.temp.1 
+
+# write the plot to file using the WriteJpeg function, an external R function
+# in the supporting_functions file.
+WriteJpeg(plt = max.temp.1, plt.title = max.temp.1.title)
+
+
+# Minimum temperature with standard deviation
+#min.temp.1 
+WriteJpeg(plt = min.temp.1, plt.title = min.temp.1.title)
+
+
+# Potential evapotranspiration (PET) with standard deviation 
+#pet.1 
+WriteJpeg(plt = pet.1, plt.title = pet.1.title)
+
+
+# Daily precipitation with standard deviation  
+#precip.1 
+WriteJpeg(plt = precip.1 , plt.title = precip.1.title)
+
+
+# Daily precipitation without standard deviation  
+#precip.2 
+WriteJpeg(plt = precip.2, plt.title = precip.2.title)
+
+
+# Accumulated Precipitation with StdDev but no Effective Precipitation
+#no.eprecip.1
+WriteJpeg(plt = no.eprecip.1, plt.title = no.eprecip.1.title)
+
+
+# Precipitation and Effective Precipitation, Accumulated 
+#eprecip.1
+WriteJpeg(plt = eprecip.1, plt.title = eprecip.1.title)
+
+
+# Accumulated Precipitation 
+#acc.precip.2
+WriteJpeg(plt = acc.precip.2, plt.title = acc.precip.2.title)
+
+
+# Accumulated PET 
+#acc.pet.1
+WriteJpeg(plt = acc.pet.1, plt.title = acc.pet.1.title)
+
+
+# P/PET 
+#ppet.2
+WriteJpeg(plt = ppet.2, plt.title = ppet.2.title)
+
+
+# 30 day rolling average eP/PET and P/PET 
+#rolling.avg.ppet.2
+WriteJpeg(plt = rolling.avg.ppet.2, plt.title = rolling.avg.ppet.2.title)
+
+```
+
+  
+
