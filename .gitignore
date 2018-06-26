@@ -40,11 +40,10 @@ rsconnect/
 
 # Mac DS store file
 .DS_Store
-dataFiles/
 *.jpeg
 *.Rproj
-*.csv
 *.tex
 figures/
 *.html
 shapefiles/
+outputCSVs/
