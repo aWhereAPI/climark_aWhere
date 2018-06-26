@@ -6,32 +6,38 @@
 #devtools::install_github("aWhereAPI/aWhere-R-Charts")
 
 # load required packages
-library(tidyverse) 
+#library(tidyverse) 
 library(data.table)
 library(ggmap)
 library(ggplot2)
 library(tidyr) 
 library(dplyr)  
-library(wicket) 
+library(wicket)
+library(raster)
 library(aWhereAPI)
 library(aWhereCharts)
 
 # define input paths and variables ----------------------------------------
 
 # working directory - where input files are located and outputs will be saved
-working.dir <- "~/Documents/aWhere/" 
-setwd(working.dir)
+#working.dir <- "~/Documents/aWhere/" 
+#setwd(working.dir)
 
 # load external functions 
-source("0-supporting_functions.R")
-source("0-function_generateaWhereHistogramPET.R") #  to plot P/PET
+source("src/0-supporting_functions.R")
+source("src/0-function_generateaWhereHistogramPET.R") #  to plot P/PET
+
+#Create necessary output directories
+dir.create(path = 'outputCSVs/',showWarnings = FALSE, recursive = TRUE)
+dir.create(path = 'figures/',   showWarnings = FALSE, recursive = TRUE)
+dir.create(path = 'shapefiles', showWarnings = FALSE, recursive = TRUE)
 
 # specify the weather data directory and file name
 weather.dir <- "climark_work_csvs/" 
-weather.name <- "180609_past30.csv"
+weather.name <- "180619_past30.csv"
 
 # define template data filename
-template.file <- "CLIMARKonlyWardTemplate.csv"
+template.file <- "templateFiles/CLIMARKonlyWardTemplate.csv"
 
 # write histograms to image files 
 write.hist = TRUE
@@ -69,8 +75,44 @@ base.map = ggmap::get_map(location = c(lon = map.lon,  lat = map.lat),
 gg.map <- ggmap(base.map)
 gg.map
 
-# OR use location = country name
-base.map <- ggmap::get_map(location = "Kenya", zoom = 6, color = "bw")
+# OR use location = country name Create directory shapefiles will be stored in. 
+
+
+#Query list of all available countries
+country.codes <- raster::getData('ISO3')
+
+#We are not going to use this function because it is dependent on Google's API
+#which we have no control over and there are query limits.  Instead we will use
+#the raster package to query for a shapefile of the country and then will
+#extract the bounding box to use for the call
+
+#base.map <- ggmap::get_map(location = "Kenya", zoom = 6, color = "bw",source = 'google')
+
+#Specify what county the boundary is requested for.  By altering the query below
+#it is possible to only request the region for a subset of the country or for
+#multiple countries
+#
+# The Download = TRUE option will make it so that if the user runs the script multiple times the file
+# will be loaded from local files after the first run
+countryOfInterest.name <- 'Kenya'
+
+countryOfInterest.raster <- raster::getData('GADM'
+                                            ,country=country.codes[country.codes$NAME == countryOfInterest.name,'ISO3']
+                                            ,level=0
+                                            ,download = TRUE
+                                            ,path = 'shapefiles/')
+
+countryOfInterest.extent <- raster::extent(countryOfInterest.raster)
+
+# create the base map 
+
+sbbox <- ggmap::make_bbox(lon = c(countryOfInterest.extent[1]
+                           ,countryOfInterest.extent[2])
+                          ,lat = c(countryOfInterest.extent[3]
+                                  ,countryOfInterest.extent[4]))
+
+base.map <- ggmap::get_map(location = sbbox, maptype = "toner", source = "stamen")
+
 gg.map <- ggmap(base.map)
 gg.map
 
@@ -107,7 +149,7 @@ weather.template.df.file <- paste("weather+template",
 
 # write the combined weather and template data to .csv file
 write.csv(weather.template.df, 
-          file = weather.template.df.file)
+          file = paste0('outputCSVs/',weather.template.df.file))
 
 
 # filter the data set for subarea(s) of interest
@@ -118,7 +160,7 @@ if (!identical(subarea.select, "ENTIRE_REGION")){
   weather.template.df <- weather.template.df %>% 
     dplyr::filter(WARD_NAME %in% subarea.select) 
   
-  write.csv(weather.template.df, file = paste("weather+template_clip_",
+  write.csv(weather.template.df, file = paste("outputCSVs/weather+template_clip_",
                                               weather.name,
                                               sep = "_"))
   
@@ -201,7 +243,7 @@ head(stats.out[,1:5], n = 10)
 
 # write ward statistics to file 
 write.csv(stats.out,
-          paste("stats_by_subarea",
+          paste("outputCSVs/stats_by_subarea",
                 weather.name,
                 sep="_"))
 
@@ -222,7 +264,7 @@ aWhereCharts::generateaWhereHistogram(data = weather.template.df,
 
 # write histogram to file 
 if (write.hist == TRUE) {
-  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
+  ggplot2::ggsave(filename = paste0('figures/',hist.title, ".png"),
        device = "png")
 }
 
@@ -240,7 +282,7 @@ generateaWhereHistogram(data = weather.template.df,
 
 # write histogram to file 
 if (write.hist == TRUE) {
-  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
+  ggplot2::ggsave(filename = paste0('figures/',hist.title, ".png"),
          device = "png")
 }
 
@@ -258,8 +300,8 @@ generateaWhereHistogram(data = weather.template.df,
 
 # write histogram to file 
 if (write.hist == TRUE) {
-  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
-         device = "png")
+  ggplot2::ggsave(filename = paste0('figures/',hist.title, ".png"),
+                  device = "png")
 }
 
 
@@ -287,8 +329,8 @@ generateaWhereHistogramPET(data = weather.template.df,
 
 # write histogram to file 
 if (write.hist == TRUE) {
-  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
-         device = "png")
+  ggplot2::ggsave(filename = paste0('figures/',hist.title, ".png"),
+                  device = "png")
 }
 
 
@@ -354,7 +396,7 @@ head(grids.per.precip.level)
 
 # write number of grids per precip level to .csv
 write.csv(grids.per.precip.level,
-          "grids_per_precip_level.csv")
+          "outputCSVs/grids_per_precip_level.csv")
 
 
 # P/PET table summary ---------------------------------------------------
@@ -408,7 +450,7 @@ head(grids.per.ppet.level)
 
 # write number of grids per ppet level to .csv
 write.csv(grids.per.ppet.level,
-          "grids_per_ppet_level.csv")
+          "outputCSVs/grids_per_ppet_level.csv")
 
 
 
@@ -462,7 +504,7 @@ weather.template.df$aDinPre <- ClipValues(weather.template.df$DFLTSUM,
 ggmap.df <- weather.template.df
 
 # Expand wkt to format usable by ggplot
-polygon.df = as.tibble(wicket::wkt_coords(ggmap.df$shapewkt))
+polygon.df = tibble::as.tibble(wicket::wkt_coords(ggmap.df$shapewkt))
 polygon.df$aPre <- ggmap.df$aPre[polygon.df$object]
 polygon.df$cPovPET = ggmap.df$cPovPET[polygon.df$object]
 polygon.df$aDinPre = ggmap.df$aDinPre[polygon.df$object]
@@ -487,7 +529,7 @@ precip.map <- ggmap(base.map) +
 precip.map
 
 # save the map to file
-ggsave(filename = paste0(precip.map.title, ".png"), 
+ggsave(filename = paste0('figures/',precip.map.title, ".png"), 
        precip.map, width = 6.02, height = 3.38, units = "in")
 
 
@@ -509,7 +551,7 @@ ppet.map <- ggmap(base.map) +
 ppet.map
 
 # save the map to file
-ggsave(filename = paste0(ppet.map.title, ".png"), 
+ggsave(filename = paste0('figures/',ppet.map.title, ".png"), 
        ppet.map, width = 6.02, height = 3.38, units = "in")
 
 
@@ -531,7 +573,7 @@ pltn.map <- ggmap(base.map) +
 pltn.map
 
 # save the map to file
-ggsave(filename = paste0(pltn.map.title, ".png"), 
+ggsave(filename = paste0('figures/',pltn.map.title, ".png"), 
        pltn.map, width = 6.02, height = 3.38, units = "in")
 
 

@@ -2,14 +2,20 @@
 title: 'CLIMARK Tutorial: Get forecast for region'
 author: "Victoria Scholl"
 date: "6/20/2018"
-output: pdf_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
-```{r setup, include=FALSE}
+Because this is an RMarkdown File, we need to define out working directory first.  This is the place on your computer where your input files are located for this tutorial, and it is also where the output files will be written. Instead of typing out the entire path to every file that we need ("absolute" paths), you can just use their filenames or locations within this working directory ("relative" paths) since we are setting this working directory as our starting point for the rest of the tutorial. 
+
+```{r setup, include=TRUE}
 knitr::opts_chunk$set(echo=TRUE,
                       message=FALSE,
                       warning=FALSE,
                       results = 'hide')
+
+knitr::opts_knit$set(root.dir = 'c:/aWhere/projects/climark')
 ```
 
 # Introduction
@@ -27,6 +33,30 @@ First, install the aWhere R packages.
 library(devtools)
 devtools::install_github("aWhereAPI/aWhere-R-Library")
 devtools::install_github("aWhereAPI/aWhere-R-Charts")
+
+```
+This code would automatically check to see if the necessary packages are installed and if not, install them
+
+```{r check_install_packages, eval = FALSE}
+
+list.of.packages.CRAN = c("dplyr", "ggmap", "tibble", "wicket", "ggplot2", 'raster',"knitr")
+
+new.packages.CRAN = list.of.packages.CRAN[!(list.of.packages.CRAN %in% installed.packages()[,"Package"])]
+if(length(new.packages.CRAN)) install.packages(new.packages.CRAN)
+
+
+list.of.packages.Github = c("aWhereAPI", "aWhereCharts")
+
+new.packages.Github = list.of.packages.Github[!(list.of.packages.Github %in% installed.packages()[,"Package"])]
+if(length(new.packages.Github) > 0) {
+  for (x in 1:length(new.packages.Github)) {
+    if (new.packages.Github[x] == 'aWhereAPI') {
+      devtools::install_github("aWhereAPI/aWhere-R-Library")
+    } else if (new.packages.Github[x] == 'aWhereCharts') {
+      devtools::install_github("aWhereAPI/aWhere-R-Charts")
+    }
+  }
+} 
 ```
 
 Load the R packages that contain functions used in this script.
@@ -37,37 +67,32 @@ library(ggmap)
 library(tibble)
 library(wicket)
 library(ggplot2)
+library(raster)
+library(knitr)
 library(aWhereAPI)
 library(aWhereCharts)
 ```
 
 ## Define input files and parameters
 
-Define your working directory. This is the place on your computer where your input files are located for this tutorial, and it is also where the output files will be written. Instead of typing out the entire path to every file that we need ("absolute" paths), you can just use their filenames or locations within this working directory ("relative" paths) since we are setting this working directory as our starting point for the rest of the tutorial. 
-
-```{r}
-# working directory - where input files are located and outputs will be saved.
-working.dir <- "~/Documents/aWhere/"
-
-# set the working directory 
-setwd(working.dir) 
-```
-
 Use the *source* function to load R functions that are located on your local machine. For this tutorial, there are a few functions within the *0-supporting_functions.R* file. There is a zero in the beginning of this filename so it appears at the top when files are sorted alphabetically. 
 
 ```{r load.functions}
 # load external R functions in local file
-source(paste0(working.dir, "0-supporting_functions.R"))
+source("src/0-supporting_functions.R")
+
+dir.create(path = 'figures/',showWarnings = FALSE, recursive = TRUE)
+dir.create(path = 'shapefiles', showWarnings = FALSE, recursive = TRUE)
 ```
 
 To pull data from the aWhere API, you'll need a Consumer Key and Secret, like a username and password. Put these in a text file with the following format: line 1 is the Consumer Key, line 2 is the Consumer Secret, and line 3 is a blank line. Set the *credentials.file* variable equal to the name of this text file. Place your credentials file in your working directory. 
 
 ```{r set.credentials.file}
 # filename containing your aWhere credientials (key and secret)
-credentials.file <- "credentials.txt"
+credentials.file <- 'c:/aWhere/credentials/credentials.txt'
 
 # load the aWhere API credentials file 
-aWhereAPI::load_credentials(paste0(working.dir, credentials.file))
+aWhereAPI::load_credentials(credentials.file)
 ```
 
 What are the starting and ending days that define the duration of the forecast? Also specify the range of years over which to calculate the long-term normal values. 
@@ -96,14 +121,14 @@ Specify the template data filename containing the geographic location data.
 
 ```{r}
 # define template data filename
-template.file <- "CLIMARKonlyWardTemplate.csv"
+template.file <- "templateFiles/CLIMARKonlyWardTemplate.csv"
 ``` 
 
 Here is a list of all wards in the CLIMARK area: 
 
 ```{r results = TRUE}
 # read the template data 
-template.place <- utils::read.csv(paste0(working.dir, template.file),
+template.place <- utils::read.csv(template.file,
                                   stringsAsFactors=FALSE) 
 
 print("Wards in data set: ")
@@ -166,12 +191,47 @@ gg.map <- ggmap(base.map)
 gg.map
 ```
 
-Or you can set *location* = "kenya" instead of using a specific latitute and longitude.
+Or you can set *location* = "kenya" instead of using a specific latitute and longitude.  However, this functionality is limited and is subject to the Google API.  Instead, we show code that relies on pulling a shapefile of the respective country, extracting a bounding box, and then using that information to query a different map source.  This method also allows the file to be saved locally so the map information will only have to be pulled once
 
 ```{r results = TRUE, fig.align="center"}
-base.map <- ggmap::get_map(location = "Kenya", zoom = 6, color = "bw")
+#Query list of all available countries
+country.codes <- raster::getData('ISO3')
+
+#We are not going to use this function because it is dependent on Google's API
+#which we have no control over and there are query limits.  Instead we will use
+#the raster package to query for a shapefile of the country and then will
+#extract the bounding box to use for the call
+
+#base.map <- ggmap::get_map(location = "Kenya", zoom = 6, color = "bw",source = 'google')
+
+#Specify what county the boundary is requested for.  By altering the query below
+#it is possible to only request the region for a subset of the country or for
+#multiple countries
+#
+# The Download = TRUE option will make it so that if the user runs the script multiple times the file
+# will be loaded from local files after the first run
+countryOfInterest.name <- 'Kenya'
+
+countryOfInterest.raster <- raster::getData('GADM'
+                                            ,country=country.codes[country.codes$NAME == countryOfInterest.name,'ISO3']
+                                            ,level=0
+                                            ,download = TRUE
+                                            ,path = 'shapefiles/')
+
+countryOfInterest.extent <- raster::extent(countryOfInterest.raster)
+
+# create the base map 
+
+sbbox <- ggmap::make_bbox(lon = c(countryOfInterest.extent[1]
+                           ,countryOfInterest.extent[2])
+                          ,lat = c(countryOfInterest.extent[3]
+                                  ,countryOfInterest.extent[4]))
+
+base.map <- ggmap::get_map(location = sbbox, maptype = "toner", source = "stamen")
+
 gg.map <- ggmap(base.map)
 gg.map
+
 ```
 
 Set thresholds for different variables during mapping. For instance, we want our mapped range of precipitation data to be from 0 to 300 mm. 
@@ -188,7 +248,7 @@ Pull the aWhere forecast data for the specified location and timespan. The R fun
 ```{r pull.weather.data}
 # query the aWhere API to get forecast data and write to file 
 forecast.all <- GetForecastData(template.place, days, years, 
-                                write.file = TRUE, filename.out = filename.out)
+                                write.file = TRUE, filename.out = paste0('outputCSVs/',filename.out))
 ```
 
 \pagebreak
@@ -266,8 +326,11 @@ precip.map.7 <- ggmap(base.map) +
 precip.map.7
 
 # save map to file 
-ggsave(filename = paste0(map.title.7, ".png"), 
+ggsave(filename = paste0('figures/',map.title.7, ".png"), 
        precip.map.7, width = 6.02, height = 3.38, units = "in")
+
+
+
 ```
 
 
@@ -303,7 +366,7 @@ precip.map.3 <- ggmap(base.map) +
 precip.map.3
 
 # save map to file 
-ggsave(filename = paste0(map.title.3, ".png"), 
+ggsave(filename = paste0('figures/',map.title.3, ".png"), 
        precip.map.3, width = 6.02, height = 3.38, units = "in")
 ```
 

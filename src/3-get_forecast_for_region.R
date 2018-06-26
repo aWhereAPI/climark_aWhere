@@ -12,6 +12,7 @@ library(ggmap)
 library(tibble)
 library(wicket)
 library(ggplot2)
+library(raster)
 library(aWhereAPI)
 library(aWhereCharts)
 
@@ -19,16 +20,20 @@ library(aWhereCharts)
 # define input paths and variables ----------------------------------------
 
 # working directory - where input files are located and outputs will be saved.
-working.dir <- "~/Documents/aWhere/"
+working.dir <- c('c:/aWhere/projects/climark')
 
 # set the working directory 
 setwd(working.dir) 
 
+dir.create(path = 'figures/',showWarnings = FALSE, recursive = TRUE)
+dir.create(path = 'shapefiles', showWarnings = FALSE, recursive = TRUE)
+
+
 # load external functions 
-source(paste0(working.dir, "0-supporting_functions.R"))
+source('src/0-supporting_functions.R')
 
 # filename containing your aWhere credientials (key and secret)
-credentials.file <- "credentials.txt"
+credentials.file <- 'c:/aWhere/credentials/credentials.txt'
 
 # load the aWhere API credentials file 
 aWhereAPI::load_credentials(credentials.file)
@@ -49,10 +54,10 @@ years <- c(2010, 2017)
 n.day.forecasts <- c(7, 3)
 
 # template file containing geographic data across a region.
-template.file <- "CLIMARKonlyWardTemplate.csv"
+template.file <- "templateFiles/CLIMARKonlyWardTemplate.csv"
 
 # read the template data 
-template.place <- utils::read.csv(paste0(working.dir, template.file),
+template.place <- utils::read.csv(template.file,
                                   stringsAsFactors=FALSE) 
 
 print("Wards in data set: ")
@@ -79,7 +84,7 @@ print(paste0("Your forecast will pull ", as.character(nrow(template.place)),
 
 # base filename for outputs. currently incorporates the name(s) of the 
 # subarea(s) of interest, but you can set it to be anything. 
-filename.out <- paste("AOI_Forecast",
+filename.out <- paste("outputCSVs/AOI_Forecast",
                       paste(subarea.select, collapse="_"),
                       sep = "_")
 
@@ -97,8 +102,44 @@ base.map = ggmap::get_map(location = c(lon = map.lon,  lat = map.lat),
 gg.map <- ggmap(base.map)
 gg.map
 
-# OR use location = country name
-base.map <- ggmap::get_map(location = "Kenya", zoom = 6, color = "bw")
+# OR use location = country name Create directory shapefiles will be stored in. 
+
+
+#Query list of all available countries
+country.codes <- raster::getData('ISO3')
+
+#We are not going to use this function because it is dependent on Google's API
+#which we have no control over and there are query limits.  Instead we will use
+#the raster package to query for a shapefile of the country and then will
+#extract the bounding box to use for the call
+
+#base.map <- ggmap::get_map(location = "Kenya", zoom = 6, color = "bw",source = 'google')
+
+#Specify what county the boundary is requested for.  By altering the query below
+#it is possible to only request the region for a subset of the country or for
+#multiple countries
+#
+# The Download = TRUE option will make it so that if the user runs the script multiple times the file
+# will be loaded from local files after the first run
+countryOfInterest.name <- 'Kenya'
+
+countryOfInterest.raster <- raster::getData('GADM'
+                                            ,country=country.codes[country.codes$NAME == countryOfInterest.name,'ISO3']
+                                            ,level=0
+                                            ,download = TRUE
+                                            ,path = 'shapefiles/')
+
+countryOfInterest.extent <- raster::extent(countryOfInterest.raster)
+
+# create the base map 
+
+sbbox <- ggmap::make_bbox(lon = c(countryOfInterest.extent[1]
+                                  ,countryOfInterest.extent[2])
+                          ,lat = c(countryOfInterest.extent[3]
+                                   ,countryOfInterest.extent[4]))
+
+base.map <- ggmap::get_map(location = sbbox, maptype = "toner", source = "stamen")
+
 gg.map <- ggmap(base.map)
 gg.map
 
@@ -169,7 +210,7 @@ precip.map.7 <- ggmap(base.map) +
 precip.map.7
 
 # save map to file 
-ggsave(filename = paste0(map.title.7, ".png"), 
+ggsave(filename = paste0('figures/',map.title.7, ".png"), 
        precip.map.7, width = 6.02, height = 3.38, units = "in")
 
 
@@ -205,5 +246,5 @@ precip.map.3 <- ggmap(base.map) +
 precip.map.3
 
 # save map to file 
-ggsave(filename = paste0(map.title.3, ".png"), 
+ggsave(filename = paste0('figures/',map.title.3, ".png"), 
        precip.map.3, width = 6.02, height = 3.38, units = "in")

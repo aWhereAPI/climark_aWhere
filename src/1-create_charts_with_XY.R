@@ -8,6 +8,26 @@
 #devtools::install_github("aWhereAPI/aWhere-R-Charts")
 
 
+list.of.packages.CRAN = c("tidyr", "dplyr", "ggplot2", "ggthemes", "curl", "zoo")
+
+new.packages.CRAN = list.of.packages.CRAN[!(list.of.packages.CRAN %in% installed.packages()[,"Package"])]
+if(length(new.packages.CRAN)) install.packages(new.packages.CRAN)
+
+
+list.of.packages.Github = c("aWhereAPI", "aWhereCharts")
+
+new.packages.Github = list.of.packages.Github[!(list.of.packages.Github %in% installed.packages()[,"Package"])]
+if(length(new.packages.Github) > 0) {
+  for (x in 1:length(new.packages.Github)) {
+    if (new.packages.Github[x] == 'aWhereAPI') {
+      devtools::install_github("aWhereAPI/aWhere-R-Library")
+    } else if (new.packages.Github[x] == 'aWhereCharts') {
+      devtools::install_github("aWhereAPI/aWhere-R-Charts")
+    }
+  }
+} 
+
+
 # load required packages 
 library(tidyr)
 library(dplyr)
@@ -21,19 +41,24 @@ library(aWhereCharts)
 # define input paths and variables ----------------------------------------
 
 # working directory - where input files are located and outputs will be saved.
-working.dir <- "~/Documents/aWhere/"
+working.dir <- c('c:/aWhere/projects/climark')
 setwd(working.dir)
 
 # load external R functions in local file
-source("0-supporting_functions.R")
+source("src/0-supporting_functions.R")
+
+#Create Necessary Output Directories
+dir.create(path = 'outputCSVs/',showWarnings = FALSE, recursive = TRUE)
+dir.create(path = 'figures/',showWarnings = FALSE, recursive = TRUE)
+
 
 # filename containing your aWhere credientials (key and secret),
 # a text file where line 1 is the Consumer Key,
 # line 2 is the Consumer Secret, and line 3 is a blank line. 
-credentials.file <- "credentials.txt"
+credentials.file <- 'c:/aWhere/credentials/credentials.txt'
 
 # load the aWhere API credentials file 
-aWhereAPI::load_credentials(paste0(working.dir, credentials.file)) 
+aWhereAPI::load_credentials(credentials.file) 
 
 # latitude, longitude, and name of location used for the chart names 
 # and output file names
@@ -47,7 +72,8 @@ years <- c(2010, 2017)
 
 #starting and ending days with format "YYYY-MM-DD"
 day.start <- "2018-03-01"
-day.end <- "2018-03-08" # specific date
+
+#day.end <- "2018-03-08" # specific date
 day.end <- as.character(Sys.Date() + 6) # today plus n
 
 # combine the days into a single vector 
@@ -80,7 +106,7 @@ weather.df <- aWhereCharts::generateaWhereDataset(lat = lat, lon = lon,
 
 # reorder the columns in the data frame
 weather.df <- weather.df %>% 
-  select(day, date, latitude, longitude, everything())
+              dplyr::select(day, date, latitude, longitude, everything())
 
 # look at the weather data.
 # select the first five columns of the data frame using [,1:5]
@@ -89,7 +115,7 @@ utils::head(weather.df[,1:5], n = 10)
 
 # write forecast to .csv file 
 utils::write.csv(weather.df, 
-                 file = paste(location.name, 
+                 file = paste('outputCSVs/',location.name, 
                               paste(days, collapse="_"),
                               paste(years, collapse="_"),
                               ".csv", sep="_"))
@@ -222,7 +248,6 @@ rolling.avg.ppet.2 <- aWhereCharts::generateaWhereChart(weather.df,
                                       rolling_window = roll.avg)
 
 
-
 # mulitplot ---------------------------------------------------------------
 
 # Select any of the above charts for multiplot:
@@ -230,7 +255,7 @@ rolling.avg.ppet.2 <- aWhereCharts::generateaWhereChart(weather.df,
 # acc.precip.2, acc.pet.1, ppet.2, rolling.avg.ppet.2
 
 # set the graphics device parameters to write a .JPEG
-jpeg(paste0(location.name,"_4chart.jpeg"), 
+jpeg(paste0('figures/',location.name,"_4chart.jpeg"), 
      width = 12, height = 6, 
      units = 'in', res = 500)
 
@@ -246,60 +271,59 @@ dev.off()
 
 # Write charts to file ----------------------------------------------------
 
-
 # Maximum temperature
 #max.temp.1 # display plot
 
 # write the plot to file using the WriteJpeg function, an external R function
 # in the "supporting_functions.R" file.
-WriteJpeg(plt = max.temp.1, plt.title = max.temp.1.title)
+WriteJpeg(plt = max.temp.1, plt.title = paste0('figures/',max.temp.1.title))
 
 
 # Minimum temperature with standard deviation
 min.temp.1 
-WriteJpeg(plt = min.temp.1, plt.title = min.temp.1.title)
+WriteJpeg(plt = min.temp.1, plt.title = paste0('figures/',min.temp.1.title))
 
 
 # Potential evapotranspiration (PET) with standard deviation 
 pet.1 
-WriteJpeg(plt = pet.1, plt.title = pet.1.title)
+WriteJpeg(plt = pet.1, plt.title = paste0('figures/',pet.1.title))
 
 
 # Daily precipitation with standard deviation  
 precip.1 
-WriteJpeg(plt = precip.1 , plt.title = precip.1.title)
+WriteJpeg(plt = precip.1 , plt.title = paste0('figures/',precip.1.title))
 
 
 # Daily precipitation without standard deviation  
 precip.2 
-WriteJpeg(plt = precip.2, plt.title = precip.2.title)
+WriteJpeg(plt = precip.2, plt.title = paste0('figures/',precip.2.title))
 
 
 # Accumulated Precipitation with StdDev but no Effective Precipitation
 no.eprecip.1
-WriteJpeg(plt = no.eprecip.1, plt.title = no.eprecip.1.title)
+WriteJpeg(plt = no.eprecip.1, plt.title = paste0('figures/',no.eprecip.1.title))
 
 
 # Precipitation and Effective Precipitation, Accumulated 
 eprecip.1
-WriteJpeg(plt = eprecip.1, plt.title = eprecip.1.title)
+WriteJpeg(plt = eprecip.1, plt.title = paste0('figures/',eprecip.1.title))
 
 
 # Accumulated Precipitation 
 acc.precip.2
-WriteJpeg(plt = acc.precip.2, plt.title = acc.precip.2.title)
+WriteJpeg(plt = acc.precip.2, plt.title = paste0('figures/',acc.precip.2.title))
 
 
 # Accumulated PET 
 acc.pet.1
-WriteJpeg(plt = acc.pet.1, plt.title = acc.pet.1.title)
+WriteJpeg(plt = acc.pet.1, plt.title = paste0('figures/',acc.pet.1.title))
 
 
 # P/PET 
 ppet.2
-WriteJpeg(plt = ppet.2, plt.title = ppet.2.title)
+WriteJpeg(plt = ppet.2, plt.title = paste0('figures/',ppet.2.title))
 
 
 # 30 day rolling average eP/PET and P/PET 
 rolling.avg.ppet.2
-WriteJpeg(plt = rolling.avg.ppet.2, plt.title = rolling.avg.ppet.2.title)
+WriteJpeg(plt = rolling.avg.ppet.2, plt.title = paste0('figures/',rolling.avg.ppet.2.title))

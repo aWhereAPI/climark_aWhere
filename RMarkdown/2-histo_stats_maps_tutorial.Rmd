@@ -2,14 +2,21 @@
 title: 'CLIMARK Tutorial: Histograms, Statistics and Maps'
 author: "Victoria Scholl"
 date: "6/19/2018"
-output: pdf_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
-```{r setup, include=FALSE}
+Because this is an RMarkdown File, we need to define out working directory first.  This is the place on your computer where your input files are located for this tutorial, and it is also where the output files will be written. Instead of typing out the entire path to every file that we need ("absolute" paths), you can just use their filenames or locations within this working directory ("relative" paths) since we are setting this working directory as our starting point for the rest of the tutorial. 
+
+```{r setup, include=TRUE}
 knitr::opts_chunk$set(echo=TRUE,
                       message=FALSE,
                       warning=FALSE,
                       results = 'hide')
+
+knitr::opts_knit$set(root.dir = 'c:/aWhere/projects/climark')
+
 ```
 
 # Introduction
@@ -27,6 +34,32 @@ First, install the aWhere R packages.
 library(devtools)
 devtools::install_github("aWhereAPI/aWhere-R-Library")
 devtools::install_github("aWhereAPI/aWhere-R-Charts")
+
+```
+
+This code would automatically check to see if the necessary packages are installed and if not, install them
+
+```{r check_install_packages, eval = FALSE}
+
+list.of.packages.CRAN = c("dplyr", "tidyverse", "tibble", "tidyr", "ggplot2", "ggmap", "ggthemes", "wicket", "knitr")
+
+new.packages.CRAN = list.of.packages.CRAN[!(list.of.packages.CRAN %in% installed.packages()[,"Package"])]
+if(length(new.packages.CRAN)) install.packages(new.packages.CRAN)
+
+
+list.of.packages.Github = c("aWhereAPI", "aWhereCharts")
+
+new.packages.Github = list.of.packages.Github[!(list.of.packages.Github %in% installed.packages()[,"Package"])]
+if(length(new.packages.Github) > 0) {
+  for (x in 1:length(new.packages.Github)) {
+    if (new.packages.Github[x] == 'aWhereAPI') {
+      devtools::install_github("aWhereAPI/aWhere-R-Library")
+    } else if (new.packages.Github[x] == 'aWhereCharts') {
+      devtools::install_github("aWhereAPI/aWhere-R-Charts")
+    }
+  }
+} 
+
 ```
 
 Load the R packages that contain functions used in this script. 
@@ -39,29 +72,26 @@ library(tidyr)
 library(ggplot2)
 library(ggmap)
 library(ggthemes)
-library(wicket) 
+library(wicket)
+library(knitr)
+library(raster)
 library(aWhereAPI)
 library(aWhereCharts)
 ```
 
 ## Define input files and parameters
 
-Define your working directory. This is the place on your computer where your input files are located for this tutorial, and it is also where the output files will be written. Instead of typing out the entire path to every file that we need ("absolute" paths), you can just use their filenames or locations within this working directory ("relative" paths) since we are setting this working directory as our starting point for the rest of the tutorial. 
-
-```{r set.wd}
-# define your working directory - where input files are located and outputs will be saved
-working.dir <- "~/Documents/aWhere/"
-
-# set the working directory
-setwd(working.dir)
-```
-
 Use the *source* function to load R functions that are located on your local machine. For this tutorial, there are a few functions within the *0-supporting_functions.R* file. There is a zero in the beginning of this filename so it appears at the top when files are sorted alphabetically. 
 
 ```{r load.functions}
 # load external R functions in local file
-source("0-supporting_functions.R")
-source("0-function_generateaWhereHistogramPET.R") #  to plot P/PET
+source("src/0-supporting_functions.R")
+source("src/0-function_generateaWhereHistogramPET.R") #  to plot P/PET
+
+#Create necessary output directories
+dir.create(path = 'outputCSVs/',showWarnings = FALSE, recursive = TRUE)
+dir.create(path = 'figures/',   showWarnings = FALSE, recursive = TRUE)
+dir.create(path = 'shapefiles', showWarnings = FALSE, recursive = TRUE)
 ```
 
 Specify the weather data directory and file name. 
@@ -69,14 +99,14 @@ Specify the weather data directory and file name.
 ```{r}
 # specify the weather data directory and file name
 weather.dir <- "climark_work_csvs/" 
-weather.name <- "180609_past30.csv"
+weather.name <- "180619_past30.csv"
 ```
 
 Specify the template data filename containing the geographic location data.
 
 ```{r}
 # define template data filename
-template.file <- "CLIMARKonlyWardTemplate.csv"
+template.file <- "templateFiles/CLIMARKonlyWardTemplate.csv"
 ```
 
 If you want to write the histogram plots to image files, set *write.hist* to TRUE. 
@@ -130,10 +160,44 @@ gg.map
 
 \pagebreak
 
-Or you can set *location* = "kenya" instead of using a specific latitute and longitude.
+Or you can set *location* = "kenya" instead of using a specific latitute and longitude.  However, this functionality is limited and is subject to the Google API.  Instead, we show code that relies on pulling a shapefile of the respective country, extracting a bounding box, and then using that information to query a different map source.  This method also allows the file to be saved locally so the map information will only have to be pulled once
 
 ```{r results = TRUE, fig.align="center"}
-base.map <- ggmap::get_map(location = "Kenya", zoom = 6, color = "bw")
+#Query list of all available countries
+country.codes <- raster::getData('ISO3')
+
+#We are not going to use this function because it is dependent on Google's API
+#which we have no control over and there are query limits.  Instead we will use
+#the raster package to query for a shapefile of the country and then will
+#extract the bounding box to use for the call
+
+#base.map <- ggmap::get_map(location = "Kenya", zoom = 6, color = "bw",source = 'google')
+
+#Specify what county the boundary is requested for.  By altering the query below
+#it is possible to only request the region for a subset of the country or for
+#multiple countries
+#
+# The Download = TRUE option will make it so that if the user runs the script multiple times the file
+# will be loaded from local files after the first run
+countryOfInterest.name <- 'Kenya'
+
+countryOfInterest.raster <- raster::getData('GADM'
+                                            ,country=country.codes[country.codes$NAME == countryOfInterest.name,'ISO3']
+                                            ,level=0
+                                            ,download = TRUE
+                                            ,path = 'shapefiles/')
+
+countryOfInterest.extent <- raster::extent(countryOfInterest.raster)
+
+# create the base map 
+
+sbbox <- ggmap::make_bbox(lon = c(countryOfInterest.extent[1]
+                           ,countryOfInterest.extent[2])
+                          ,lat = c(countryOfInterest.extent[3]
+                                  ,countryOfInterest.extent[4]))
+
+base.map <- ggmap::get_map(location = sbbox, maptype = "toner", source = "stamen")
+
 gg.map <- ggmap(base.map)
 gg.map
 ```
@@ -146,7 +210,7 @@ Read the weather data.
 
 ```{r}
 # combine the directory and file name
-weather.file <- paste(working.dir, weather.dir, weather.name, sep="")
+weather.file <- paste(weather.dir, weather.name, sep="")
 
 # read the weather data 
 weather.df <- read.csv(weather.file)
@@ -156,7 +220,7 @@ Read the template data. Filter the data to keep only the grid cells within the s
 
 ```{r}
 # read the template data. remove columns that are duplicated.
-template.df <- read.csv(paste0(working.dir,template.file)) %>% 
+template.df <- read.csv(paste0(template.file)) %>% 
   dplyr::select( -c(shapewkt, longitude, latitude ))
 
 # filter weather data for only the grid locations within the template data 
@@ -180,7 +244,7 @@ Write the combined data set to a .csv file.
 
 ```{r}
 # construct output filename for weather + template data
-weather.template.df.file <- paste("weather+template",
+weather.template.df.file <- paste("outputCSVs/weather+template",
                                   weather.name,
                                   sep = "_")
 
@@ -198,7 +262,7 @@ if (!identical(subarea.select, "ENTIRE_REGION")){
   weather.template.df <- weather.template.df %>% 
     dplyr::filter(WARD_NAME %in% subarea.select) 
   
-  write.csv(weather.template.df, file = paste("weather+template_clip_",
+  write.csv(weather.template.df, file = paste("outputCSVs/weather+template_clip_",
                                               weather.name,
                                               sep = "_"))
 } 
@@ -292,7 +356,7 @@ Write these statistics to a .csv file.
 
 ```{r}
 write.csv(stats.out,
-          paste("stats_by_subarea",
+          paste("outputCSVs/stats_by_subarea",
                 weather.name,
                 sep="_"))
 ```
@@ -317,7 +381,7 @@ aWhereCharts::generateaWhereHistogram(data = weather.template.df,
 
 # write histogram to file 
 if (write.hist == TRUE) {
-  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
+  ggplot2::ggsave(filename = paste0('figures/',hist.title, ".png"),
        device = "png")
 }
 ```
@@ -337,8 +401,8 @@ generateaWhereHistogram(data = weather.template.df,
 
 # write histogram to file 
 if (write.hist == TRUE) {
-  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
-         device = "png")
+  ggplot2::ggsave(filename = paste0('figures/',hist.title, ".png"),
+       device = "png")
 }
 ```
 
@@ -357,8 +421,8 @@ generateaWhereHistogram(data = weather.template.df,
 
 # write histogram to file 
 if (write.hist == TRUE) {
-  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
-         device = "png")
+  ggplot2::ggsave(filename = paste0('figures/',hist.title, ".png"),
+       device = "png")
 }
 ```
 
@@ -376,7 +440,7 @@ weather.template.df$LTNtemp <- ClipValues(weather.template.df$LTNASPO,
                                         max.thresh = 2)
 
 # use this separate histogram function for now to plot P/PET
-source(paste0(working.dir, "function_generateaWhereHistogramPET.R"))
+source("src/0-function_generateaWhereHistogramPET.R")
 
 # construct a descriptive title
 hist.title <- paste("Histogram PPET", 
@@ -391,8 +455,8 @@ generateaWhereHistogramPET(data = weather.template.df,
 
 # write histogram to file 
 if (write.hist == TRUE) {
-  ggplot2::ggsave(paste0(filename = hist.title, ".png"),
-         device = "png")
+  ggplot2::ggsave(filename = paste0('figures/',hist.title, ".png"),
+       device = "png")
 }
 ```
 
@@ -482,7 +546,7 @@ Write the grid count per precip level summary to a .csv file.
 ```{r}
 # write precip number of grids per precip level to .csv
 write.csv(grids.per.precip.level,
-          "grids_per_precip_level.csv")
+          "outputCSVs/grids_per_precip_level.csv")
 ```
 
 
@@ -544,7 +608,7 @@ head(grids.per.ppet.level)
 ```{r}
 # write number of grids per ppet level to .csv
 write.csv(grids.per.ppet.level,
-          "grids_per_ppet_level.csv")
+          "outputCSVs/grids_per_ppet_level.csv")
 ```
 
 
@@ -632,7 +696,7 @@ precip.map <- ggmap(base.map) +
 precip.map
 
 # save the map to file
-ggsave(filename = paste0(precip.map.title, ".png"), 
+ggsave(filename = paste0('figures/',precip.map.title, ".png"), 
        precip.map, width = 6.02, height = 3.38, units = "in")
 ```
 
@@ -660,7 +724,7 @@ ppet.map <- ggmap(base.map) +
 ppet.map
 
 # save the map to file
-ggsave(filename = paste0(ppet.map.title, ".png"), 
+ggsave(filename = paste0('figures/',ppet.map.title, ".png"), 
        ppet.map, width = 6.02, height = 3.38, units = "in")
 ```
 
@@ -688,7 +752,7 @@ pltn.map <- ggmap(base.map) +
 pltn.map
 
 # save the map to file
-ggsave(filename = paste0(pltn.map.title, ".png"), 
+ggsave(filename = paste0('figures/',pltn.map.title, ".png"), 
        pltn.map, width = 6.02, height = 3.38, units = "in")
 ```
 
