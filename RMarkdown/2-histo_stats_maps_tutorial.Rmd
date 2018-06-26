@@ -41,7 +41,7 @@ This code would automatically check to see if the necessary packages are install
 
 ```{r check_install_packages, eval = FALSE}
 
-list.of.packages.CRAN = c("dplyr", "tidyverse", "tibble", "tidyr", "ggplot2", "ggmap", "ggthemes", "wicket", "knitr")
+list.of.packages.CRAN = c("dplyr", "tidyverse", "tibble", "tidyr", "ggplot2", "ggmap", "ggthemes", "wicket", "knitr", "raster")
 
 new.packages.CRAN = list.of.packages.CRAN[!(list.of.packages.CRAN %in% installed.packages()[,"Package"])]
 if(length(new.packages.CRAN)) install.packages(new.packages.CRAN)
